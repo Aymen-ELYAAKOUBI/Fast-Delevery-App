@@ -2,6 +2,7 @@ package com.example.suiverliverson
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -34,16 +35,23 @@ data class CompletedOrder(
 class DeliveryManager {
     var totalEarnings by mutableDoubleStateOf(186.00)
     var completedTrips by mutableIntStateOf(112)
-    var rating by mutableDoubleStateOf(4.8)
+    var rating by mutableDoubleStateOf(0.0)
 
     var currentActiveOrder by mutableStateOf<Order?>(null)
     var deliveryStage by mutableStateOf(DeliveryStage.IDLE)
+
+    var activeRouteStartPoint by mutableStateOf<GeoPoint?>(null)
+    var activeRoadRoute by mutableStateOf<List<GeoPoint>>(emptyList())
+    var routeProgress by mutableFloatStateOf(0f)
+    var pickupRouteProgress by mutableFloatStateOf(0.5f)
 
     val notificationsList = mutableStateListOf(
         AppNotification("#N1", "Commande livrée avec succès !", "الطلب #HTO80120 مع العميلة Yasmine Bennani"),
         AppNotification("#N2", "Commande récupérée !", "تم استلام الطلب من Pizza Hut المعاريف"),
         AppNotification("#N3", "Nouveau commande reçu !", "طلب جديد م مبلغه $24.50")
     )
+
+    val customerReviewsList = mutableStateListOf<CustomerReview>()
 
     val completedOrdersList = mutableStateListOf(
         CompletedOrder("#HTO80120", "Yasmine Bennani", 24.50, 3.2, "Pizza Hut المعاريف", "شارع أنفا، الدار البيضاء", "اليوم 14:30"),
@@ -55,6 +63,10 @@ class DeliveryManager {
         if (currentActiveOrder != null && deliveryStage != DeliveryStage.DELIVERED) return
 
         currentActiveOrder = order
+        activeRouteStartPoint = casablancaDriverStartPoints.random()
+        activeRoadRoute = emptyList()
+        routeProgress = 0f
+        pickupRouteProgress = 0.5f
         deliveryStage = DeliveryStage.PICKUP_EN_ROUTE
         notificationsList.add(0, AppNotification("#N${(100..999).random()}", "Nouveau commande accepté !", "Commande ${order.id} pour ${order.customerName}"))
     }
@@ -88,6 +100,18 @@ class DeliveryManager {
             )
         )
 
+        if (customerReviewsList.none { it.id == order.id }) {
+            customerReviewsList.add(0, generateReviewForOrder(order))
+            rating = customerReviewsList.map { it.rating }.average()
+        }
+
         notificationsList.add(0, AppNotification("#N${(100..999).random()}", "Commande livrée avec succès !", "Commande ${order.id} livrée à ${order.client}"))
+
+        currentActiveOrder = null
+        activeRouteStartPoint = null
+        activeRoadRoute = emptyList()
+        routeProgress = 0f
+        pickupRouteProgress = 0.5f
+        deliveryStage = DeliveryStage.IDLE
     }
 }

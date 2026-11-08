@@ -24,6 +24,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,11 +32,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.suiverliverson.ui.theme.AppSurface
 import com.example.suiverliverson.ui.theme.Green
-import com.example.suiverliverson.ui.theme.LightGray
 import com.example.suiverliverson.ui.theme.Red
-import com.example.suiverliverson.ui.theme.White
 
 @Composable
 fun HistoryScreen(deliveryManager: DeliveryManager, onBack: () -> Unit) {
@@ -44,18 +42,19 @@ fun HistoryScreen(deliveryManager: DeliveryManager, onBack: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
         // الشريط العلوي مع زر العودة ⬅️
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = White)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = MaterialTheme.colorScheme.onBackground)
             }
             Spacer(Modifier.width(8.dp))
             Text(
                 text = s.orderHistory,
-                color = White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -67,7 +66,7 @@ fun HistoryScreen(deliveryManager: DeliveryManager, onBack: () -> Unit) {
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = AppSurface)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Row(
                 modifier = Modifier.padding(16.dp),
@@ -77,7 +76,7 @@ fun HistoryScreen(deliveryManager: DeliveryManager, onBack: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.History, contentDescription = null, tint = Red)
                     Spacer(Modifier.width(10.dp))
-                    Text("إجمالي الطلبات المكتملة", color = LightGray, fontSize = 14.sp)
+                    Text("إجمالي الطلبات المكتملة", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                 }
                 Text("${deliveryManager.completedOrdersList.size}", color = Green, fontWeight = FontWeight.Bold, fontSize = 20.sp)
             }
@@ -92,7 +91,7 @@ fun HistoryScreen(deliveryManager: DeliveryManager, onBack: () -> Unit) {
                     .height(250.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(s.noHistory, color = LightGray, fontSize = 15.sp)
+                Text(s.noHistory, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp)
             }
         } else {
             deliveryManager.completedOrdersList.forEach { completed ->
@@ -101,7 +100,7 @@ fun HistoryScreen(deliveryManager: DeliveryManager, onBack: () -> Unit) {
                         .fillMaxWidth()
                         .padding(vertical = 6.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = AppSurface)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
@@ -112,7 +111,7 @@ fun HistoryScreen(deliveryManager: DeliveryManager, onBack: () -> Unit) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Green, modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(8.dp))
-                                Text(completed.customerName, color = White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text(completed.customerName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             }
                             Box(
                                 modifier = Modifier
@@ -120,13 +119,13 @@ fun HistoryScreen(deliveryManager: DeliveryManager, onBack: () -> Unit) {
                                     .background(Green)
                                     .padding(horizontal = 10.dp, vertical = 6.dp)
                             ) {
-                                Text("+$${"%.2f".format(completed.price)}", color = White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text("+$${"%.2f".format(completed.price)}", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             }
                         }
                         Spacer(Modifier.height(8.dp))
-                        Text("${completed.id} • ${completed.completedAt}", color = LightGray, fontSize = 12.sp)
+                        Text("${completed.id} • ${completed.completedAt}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         Spacer(Modifier.height(6.dp))
-                        Text("من: ${completed.pickup} ➡️ إلى: ${completed.delivery}", color = LightGray.copy(alpha = 0.85f), fontSize = 12.sp)
+                        Text("من: ${completed.pickup} ➡️ إلى: ${completed.delivery}", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f), fontSize = 12.sp)
                     }
                 }
             }

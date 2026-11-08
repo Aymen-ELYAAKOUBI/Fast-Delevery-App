@@ -23,6 +23,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,11 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.suiverliverson.ui.theme.AppSurface
-import com.example.suiverliverson.ui.theme.DarkGray
-import com.example.suiverliverson.ui.theme.LightGray
 import com.example.suiverliverson.ui.theme.Red
-import com.example.suiverliverson.ui.theme.White
 
 @Composable
 fun NotificationsScreen(deliveryManager: DeliveryManager, onBack: () -> Unit) {
@@ -43,18 +40,19 @@ fun NotificationsScreen(deliveryManager: DeliveryManager, onBack: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
         // الشريط العلوي مع زر العودة ⬅️
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = White)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = MaterialTheme.colorScheme.onBackground)
             }
             Spacer(Modifier.width(8.dp))
             Text(
                 text = s.notifications,
-                color = White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -69,7 +67,7 @@ fun NotificationsScreen(deliveryManager: DeliveryManager, onBack: () -> Unit) {
                     .height(300.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(s.noNotifications, color = LightGray, fontSize = 16.sp)
+                Text(s.noNotifications, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 16.sp)
             }
         } else {
             deliveryManager.notificationsList.forEach { notif ->
@@ -78,7 +76,7 @@ fun NotificationsScreen(deliveryManager: DeliveryManager, onBack: () -> Unit) {
                         .fillMaxWidth()
                         .padding(vertical = 6.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = AppSurface)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -88,7 +86,7 @@ fun NotificationsScreen(deliveryManager: DeliveryManager, onBack: () -> Unit) {
                             modifier = Modifier
                                 .size(44.dp)
                                 .clip(CircleShape)
-                                .background(DarkGray),
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(Icons.Default.Notifications, contentDescription = null, tint = Red)
@@ -97,7 +95,7 @@ fun NotificationsScreen(deliveryManager: DeliveryManager, onBack: () -> Unit) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(notif.title, color = Red, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                             Spacer(Modifier.height(4.dp))
-                            Text(notif.message, color = White, fontSize = 13.sp)
+                            Text(notif.message, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
                         }
                     }
                 }

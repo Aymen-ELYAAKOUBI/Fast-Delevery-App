@@ -1,6 +1,7 @@
 package com.example.suiverliverson
 
 import android.content.Context
+import android.location.Geocoder
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -21,10 +22,10 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -35,10 +36,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.suiverliverson.ui.theme.AppSurface
 import com.example.suiverliverson.ui.theme.Blue
 import com.example.suiverliverson.ui.theme.Green
-import com.example.suiverliverson.ui.theme.White
 import com.google.android.gms.maps.MapsInitializer
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
@@ -52,7 +51,9 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 // تصميم الثيم الداكن المخصص للخريطة
 val darkMapStyleJson = """
@@ -117,77 +118,149 @@ fun getCompactMarkerIcon(context: Context, emoji: String, colorHex: String): Bit
 }
 
 @Composable
-fun MapScreen(deliveryManager: DeliveryManager) {
+fun MapScreen(
+    deliveryManager: DeliveryManager,
+    onDeliveryComplete: () -> Unit
+) {
     val s = LocalStrings.current
     val context = LocalContext.current
     val activeOrder = deliveryManager.currentActiveOrder
+    val darkMode = LocalDarkMode.current
+    val account = remember { AccountStore(context).current() }
+    var accountLocationPoint by remember(account?.location) { mutableStateOf<GeoPoint?>(null) }
 
-    // إحداثيات الدار البيضاء، المغرب 🇲🇦
-    val driverStartPos = LatLng(33.5731, -7.5898)
-    val pickupPos = LatLng(33.5850, -7.6300)
-    val deliveryPos = LatLng(33.5950, -7.6500)
+    LaunchedEffect(account?.location) {
+        val location = account?.location?.trim().orEmpty()
+        if (location.isNotBlank()) {
+            val resolvedPoint = withContext(Dispatchers.IO) {
+                try {
+                    val query = if (location.contains(",")) location else "$location, Morocco"
+                    @Suppress("DEPRECATION")
+                    Geocoder(context).getFromLocationName(query, 1)
+                        ?.firstOrNull()
+                        ?.let { GeoPoint(it.latitude, it.longitude) }
+                } catch (_: Exception) {
+                    null
+                }
+            }
+            accountLocationPoint = resolvedPoint
+            if (resolvedPoint != null && activeOrder != null) {
+                deliveryManager.activeRouteStartPoint = resolvedPoint
+                deliveryManager.activeRoadRoute = emptyList()
+            }
+        }
+    }
+
+    val activeOrderId = activeOrder?.id
+    val driverStartPoint = accountLocationPoint
+        ?: deliveryManager.activeRouteStartPoint
+        ?: casablancaDriverStartPoints.first()
+    val pickupPoint = activeOrder?.pickupLocation ?: casablancaPickupPlaces.first().point
+    val deliveryPoint = activeOrder?.deliveryLocation ?: casablancaDeliveryPlaces.first().point
+    val roadRoute = deliveryManager.activeRoadRoute
+    val progress = deliveryManager.routeProgress
+    val driverStartPos = LatLng(driverStartPoint.latitude, driverStartPoint.longitude)
+    val pickupPos = LatLng(pickupPoint.latitude, pickupPoint.longitude)
+    val deliveryPos = LatLng(deliveryPoint.latitude, deliveryPoint.longitude)
 
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(driverStartPos, 14f)
+        position = CameraPosition.fromLatLngZoom(driverStartPos, 13.5f)
     }
 
-    // حماية الشاشة ومنع حدوث SecurityException
-    val mapProperties = remember {
+    LaunchedEffect(accountLocationPoint, activeOrderId) {
+        if (accountLocationPoint != null && activeOrder == null) {
+            cameraPositionState.animate(
+                com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(driverStartPos, 13.5f),
+                800
+            )
+        }
+    }
+
+    val mapProperties = remember(darkMode) {
         MapProperties(
             isMyLocationEnabled = false,
-            mapStyleOptions = try { MapStyleOptions(darkMapStyleJson) } catch (e: Exception) { null }
+            mapStyleOptions = if (darkMode) {
+                try { MapStyleOptions(darkMapStyleJson) } catch (e: Exception) { null }
+            } else null
         )
     }
-
     val mapUiSettings = remember {
-        MapUiSettings(
-            myLocationButtonEnabled = false,
-            zoomControlsEnabled = false
-        )
+        MapUiSettings(myLocationButtonEnabled = false, zoomControlsEnabled = false)
     }
 
-    var progress by remember { mutableFloatStateOf(0.0f) }
-    var isDeliveredShowDialog by remember { mutableStateOf(false) }
+    var routeLoading by remember(activeOrderId) { mutableStateOf(false) }
+    var routeUnavailable by remember(activeOrderId) { mutableStateOf(false) }
 
     val motorcycleIcon = remember(context) { getMotorcycleIcon(context) }
     val pickupMarkerIcon = remember(context) { getCompactMarkerIcon(context, "🏪", "#E91E63") }
     val deliveryMarkerIcon = remember(context) { getCompactMarkerIcon(context, "🏠", "#28A745") }
 
-    val currentBikePos = remember(progress) {
-        if (progress <= 0.5f) {
-            val t = progress / 0.5f
-            LatLng(
-                driverStartPos.latitude + (pickupPos.latitude - driverStartPos.latitude) * t,
-                driverStartPos.longitude + (pickupPos.longitude - driverStartPos.longitude) * t
-            )
-        } else {
-            val t = (progress - 0.5f) / 0.5f
-            LatLng(
-                pickupPos.latitude + (deliveryPos.latitude - pickupPos.latitude) * t,
-                pickupPos.longitude + (deliveryPos.longitude - pickupPos.longitude) * t
-            )
+    LaunchedEffect(activeOrderId, driverStartPoint) {
+        routeUnavailable = false
+        if (activeOrder != null) {
+            val route = deliveryManager.activeRoadRoute
+            if (route.isEmpty()) {
+                routeLoading = true
+                try {
+                    val apiKey = context.packageManager
+                        .getApplicationInfo(context.packageName, android.content.pm.PackageManager.GET_META_DATA)
+                        .metaData
+                        ?.getString("com.google.android.geo.API_KEY")
+                        .orEmpty()
+                    val fetchedRoute = fetchRoadRoute(
+                        apiKey,
+                        driverStartPoint,
+                        pickupPoint,
+                        deliveryPoint
+                    )
+                    check(fetchedRoute.size > 1) { "No road route was returned." }
+                    deliveryManager.activeRoadRoute = fetchedRoute
+                    deliveryManager.pickupRouteProgress = progressAtPoint(fetchedRoute, pickupPoint)
+                } catch (_: Exception) {
+                    routeUnavailable = true
+                    Toast.makeText(context, "Could not reach a road routing service. Check your internet and try again.", Toast.LENGTH_LONG).show()
+                } finally {
+                    routeLoading = false
+                }
+            }
+
+            val stableRoute = deliveryManager.activeRoadRoute
+            if (stableRoute.size > 1) {
+                val boundsBuilder = com.google.android.gms.maps.model.LatLngBounds.Builder()
+                stableRoute.forEach { boundsBuilder.include(LatLng(it.latitude, it.longitude)) }
+                cameraPositionState.animate(
+                    com.google.android.gms.maps.CameraUpdateFactory.newLatLngBounds(boundsBuilder.build(), 120),
+                    800
+                )
+            }
         }
     }
 
-    LaunchedEffect(deliveryManager.deliveryStage) {
-        if (deliveryManager.deliveryStage != DeliveryStage.IDLE) {
-            while (progress < 1.0f) {
-                delay(2200L) // حركة هادئة وبطيئة واقعية
-                progress += 0.02f
+    val currentBikePoint = pointAlongRoute(roadRoute, progress) ?: driverStartPoint
+    val currentBikePos = LatLng(currentBikePoint.latitude, currentBikePoint.longitude)
 
-                if (progress >= 0.5f && deliveryManager.deliveryStage == DeliveryStage.PICKUP_EN_ROUTE) {
+    LaunchedEffect(deliveryManager.deliveryStage, roadRoute) {
+        if (deliveryManager.deliveryStage != DeliveryStage.IDLE && roadRoute.size > 1) {
+            while (deliveryManager.routeProgress < 1f) {
+                delay(1500L)
+                deliveryManager.routeProgress =
+                    (deliveryManager.routeProgress + 0.015f).coerceAtMost(1f)
+
+                if (deliveryManager.routeProgress >= deliveryManager.pickupRouteProgress &&
+                    deliveryManager.deliveryStage == DeliveryStage.PICKUP_EN_ROUTE
+                ) {
                     deliveryManager.completePickup()
                     Toast.makeText(context, s.orderStarted, Toast.LENGTH_SHORT).show()
-                }
-
-                if (progress >= 1.0f && deliveryManager.deliveryStage == DeliveryStage.ORDER_PICKED_UP) {
-                    isDeliveredShowDialog = true
                 }
             }
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
         // خريطة داكنة سوداء
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
@@ -195,33 +268,69 @@ fun MapScreen(deliveryManager: DeliveryManager) {
             properties = mapProperties,
             uiSettings = mapUiSettings
         ) {
-            // خط مسار أزرق متناسق
-            Polyline(
-                points = listOf(driverStartPos, pickupPos, deliveryPos),
-                color = Blue,
-                width = 10f
-            )
+            if (roadRoute.size > 1) {
+                Polyline(
+                    points = roadRoute.map { LatLng(it.latitude, it.longitude) },
+                    color = Blue,
+                    width = 10f
+                )
+            }
 
-            // ماركر استلام صغير
-            Marker(
-                state = MarkerState(position = pickupPos),
-                icon = pickupMarkerIcon,
-                title = activeOrder?.pickup ?: "الاستلام"
-            )
+            if (activeOrder != null) {
+                Marker(
+                    state = MarkerState(position = pickupPos),
+                    icon = pickupMarkerIcon,
+                    title = activeOrder.pickup
+                )
+                Marker(
+                    state = MarkerState(position = deliveryPos),
+                    icon = deliveryMarkerIcon,
+                    title = activeOrder.client
+                )
+                Marker(
+                    state = MarkerState(position = currentBikePos),
+                    icon = motorcycleIcon,
+                    title = "الدراجة النارية 🛵"
+                )
+            } else if (accountLocationPoint != null) {
+                Marker(
+                    state = MarkerState(position = driverStartPos),
+                    icon = motorcycleIcon,
+                    title = "Driver location"
+                )
+            }
+        }
 
-            // ماركر توصيل صغير
-            Marker(
-                state = MarkerState(position = deliveryPos),
-                icon = deliveryMarkerIcon,
-                title = activeOrder?.client ?: "التوصيل"
-            )
+        if (roadRoute.size > 1 && !routeUnavailable) {
+            Card(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 12.dp, top = 12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f))
+            ) {
+                Text(
+                    text = "© OpenStreetMap contributors",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    fontSize = 10.sp
+                )
+            }
+        }
 
-            // أيقونة الدراجة النارية 🛵
-            Marker(
-                state = MarkerState(position = currentBikePos),
-                icon = motorcycleIcon,
-                title = "الدراجة النارية 🛵"
-            )
+        if (routeLoading || routeUnavailable) {
+            Card(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 24.dp, start = 20.dp, end = 20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Text(
+                    text = if (routeLoading) "Loading road route…" else "Road route unavailable. Check internet and try again.",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    fontSize = 13.sp
+                )
+            }
         }
 
         // كارد مدمجة تحت تحتوي اسم الزبون والسعر فقط
@@ -231,7 +340,7 @@ fun MapScreen(deliveryManager: DeliveryManager) {
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 24.dp, start = 20.dp, end = 20.dp),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = AppSurface)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
@@ -239,7 +348,7 @@ fun MapScreen(deliveryManager: DeliveryManager) {
                 ) {
                     Text(
                         text = order.customerName,
-                        color = White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
                     )
@@ -252,7 +361,7 @@ fun MapScreen(deliveryManager: DeliveryManager) {
                     ) {
                         Text(
                             text = "$${"%.2f".format(order.price)}",
-                            color = White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
                         )
@@ -262,7 +371,7 @@ fun MapScreen(deliveryManager: DeliveryManager) {
         }
 
         // خيار تسليم الطلبية والتأكيد بـ Confirmer
-        if (isDeliveredShowDialog) {
+        if (deliveryManager.deliveryStage == DeliveryStage.ORDER_PICKED_UP && progress >= 1f) {
             Card(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -274,11 +383,11 @@ fun MapScreen(deliveryManager: DeliveryManager) {
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = White)
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = s.orderDeliveredConfirm,
-                        color = White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
@@ -286,10 +395,9 @@ fun MapScreen(deliveryManager: DeliveryManager) {
                     Button(
                         onClick = {
                             deliveryManager.completeDelivery()
-                            isDeliveredShowDialog = false
-                            progress = 0.0f
+                            onDeliveryComplete()
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = White),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface),
                         shape = RoundedCornerShape(20.dp)
                     ) {
                         Text(s.confirmer, color = Green, fontWeight = FontWeight.Bold, fontSize = 12.sp)

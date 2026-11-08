@@ -25,7 +25,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -38,6 +37,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -51,27 +51,24 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.suiverliverson.ui.theme.AppSurface
-import com.example.suiverliverson.ui.theme.DarkGray
-import com.example.suiverliverson.ui.theme.LightGray
 import com.example.suiverliverson.ui.theme.Red
-import com.example.suiverliverson.ui.theme.White
 
 @Composable
 fun appFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedContainerColor = AppSurface,
-    unfocusedContainerColor = AppSurface,
-    focusedBorderColor = Red,
-    unfocusedBorderColor = DarkGray,
-    focusedTextColor = White,
-    unfocusedTextColor = White,
-    cursorColor = Red
+    focusedContainerColor = MaterialTheme.colorScheme.surface,
+    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+    focusedBorderColor = MaterialTheme.colorScheme.primary,
+    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+    cursorColor = MaterialTheme.colorScheme.primary
 )
 
 @Composable
@@ -81,7 +78,9 @@ fun SignUpScreen(store: AccountStore, onBack: () -> Unit, onSuccess: () -> Unit)
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
     var age by remember { mutableStateOf("") }
+    var location by remember { mutableStateOf("") }
     var license by remember { mutableStateOf("B") }
+    var gender by remember { mutableStateOf("man") }
     var login by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf("") }
@@ -101,28 +100,48 @@ fun SignUpScreen(store: AccountStore, onBack: () -> Unit, onSuccess: () -> Unit)
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp, vertical = 16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = White)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = MaterialTheme.colorScheme.onSurface)
             }
             Text(
                 s.createAccount,
-                color = White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold
             )
         }
         Spacer(Modifier.height(16.dp))
 
+        Text("Gender / الجنس", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            FilterChip(
+                selected = gender == "man",
+                onClick = { gender = "man" },
+                label = { Text("Man / رجل") }
+            )
+            FilterChip(
+                selected = gender == "woman",
+                onClick = { gender = "woman" },
+                label = { Text("Woman / امرأة") }
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+
         // اختيار الصورة الشخصية
         Box(
             modifier = Modifier
                 .size(90.dp)
                 .clip(CircleShape)
-                .background(AppSurface)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
                 .border(2.dp, Red, CircleShape)
                 .clickable { photoLauncher.launch("image/*") }
                 .align(Alignment.CenterHorizontally),
@@ -147,11 +166,12 @@ fun SignUpScreen(store: AccountStore, onBack: () -> Unit, onSuccess: () -> Unit)
                     )
                 }
             } else {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.AddAPhoto, contentDescription = null, tint = Red)
-                    Spacer(Modifier.height(4.dp))
-                    Text("الصورة", color = LightGray, fontSize = 11.sp)
-                }
+                Image(
+                    painter = painterResource(if (gender == "woman") R.drawable.woman_avatar else R.drawable.man_avatar),
+                    contentDescription = "${gender} avatar",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
             }
         }
         Spacer(Modifier.height(20.dp))
@@ -161,7 +181,7 @@ fun SignUpScreen(store: AccountStore, onBack: () -> Unit, onSuccess: () -> Unit)
                 value = lastName,
                 onValueChange = { lastName = it },
                 modifier = Modifier.weight(1f),
-                placeholder = { Text(s.lastName, color = LightGray) },
+                placeholder = { Text(s.lastName, color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 singleLine = true,
                 shape = shape,
                 colors = colors
@@ -170,7 +190,7 @@ fun SignUpScreen(store: AccountStore, onBack: () -> Unit, onSuccess: () -> Unit)
                 value = firstName,
                 onValueChange = { firstName = it },
                 modifier = Modifier.weight(1f),
-                placeholder = { Text(s.firstName, color = LightGray) },
+                placeholder = { Text(s.firstName, color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 singleLine = true,
                 shape = shape,
                 colors = colors
@@ -182,8 +202,8 @@ fun SignUpScreen(store: AccountStore, onBack: () -> Unit, onSuccess: () -> Unit)
             value = age,
             onValueChange = { if (it.length <= 2 && it.all { c -> c.isDigit() }) age = it },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(s.age, color = LightGray) },
-            leadingIcon = { Icon(Icons.Default.Person, null, tint = LightGray) },
+            placeholder = { Text(s.age, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            leadingIcon = { Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
             singleLine = true,
             shape = shape,
             colors = colors,
@@ -191,7 +211,18 @@ fun SignUpScreen(store: AccountStore, onBack: () -> Unit, onSuccess: () -> Unit)
         )
         Spacer(Modifier.height(14.dp))
 
-        Text(s.licenseType, color = LightGray, fontSize = 14.sp)
+        OutlinedTextField(
+            value = location,
+            onValueChange = { location = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Location / المدينة", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            singleLine = true,
+            shape = shape,
+            colors = colors
+        )
+        Spacer(Modifier.height(14.dp))
+
+        Text(s.licenseType, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("A", "B", "C", "D").forEach { type ->
@@ -208,8 +239,8 @@ fun SignUpScreen(store: AccountStore, onBack: () -> Unit, onSuccess: () -> Unit)
             value = login,
             onValueChange = { login = it },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(s.emailPhone, color = LightGray) },
-            leadingIcon = { Icon(Icons.Default.Email, null, tint = LightGray) },
+            placeholder = { Text(s.emailPhone, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            leadingIcon = { Icon(Icons.Default.Email, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
             singleLine = true,
             shape = shape,
             colors = colors,
@@ -221,15 +252,15 @@ fun SignUpScreen(store: AccountStore, onBack: () -> Unit, onSuccess: () -> Unit)
             value = password,
             onValueChange = { password = it },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(s.password, color = LightGray) },
-            leadingIcon = { Icon(Icons.Default.Lock, null, tint = LightGray) },
+            placeholder = { Text(s.password, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            leadingIcon = { Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
             trailingIcon = {
                 IconButton(onClick = { showPassword = !showPassword }) {
                     Icon(
                         if (showPassword) Icons.Default.VisibilityOff
                         else Icons.Default.Visibility,
                         contentDescription = null,
-                        tint = LightGray
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             },
@@ -246,8 +277,8 @@ fun SignUpScreen(store: AccountStore, onBack: () -> Unit, onSuccess: () -> Unit)
             value = confirm,
             onValueChange = { confirm = it },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(s.confirmPassword, color = LightGray) },
-            leadingIcon = { Icon(Icons.Default.Lock, null, tint = LightGray) },
+            placeholder = { Text(s.confirmPassword, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            leadingIcon = { Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
             visualTransformation = if (showPassword) VisualTransformation.None
             else PasswordVisualTransformation(),
             singleLine = true,
@@ -266,7 +297,7 @@ fun SignUpScreen(store: AccountStore, onBack: () -> Unit, onSuccess: () -> Unit)
             onClick = {
                 val ageInt = age.toIntOrNull()
                 error = when {
-                    firstName.isBlank() || lastName.isBlank() || age.isBlank() ||
+                    firstName.isBlank() || lastName.isBlank() || age.isBlank() || location.isBlank() ||
                             login.isBlank() || password.isBlank() || confirm.isBlank() ->
                         s.fillAllFields
                     ageInt == null || ageInt !in 18..70 -> s.invalidAge
@@ -277,7 +308,7 @@ fun SignUpScreen(store: AccountStore, onBack: () -> Unit, onSuccess: () -> Unit)
                 }
                 if (error == null && ageInt != null) {
                     val account = store.register(
-                        firstName, lastName, ageInt, license, login, password, imageUri?.toString()
+                        firstName, lastName, ageInt, license, login, password, imageUri?.toString(), gender, location
                     )
                     store.setCurrent(account)
                     onSuccess()
@@ -289,7 +320,7 @@ fun SignUpScreen(store: AccountStore, onBack: () -> Unit, onSuccess: () -> Unit)
             shape = shape,
             colors = ButtonDefaults.buttonColors(containerColor = Red)
         ) {
-            Text(s.createAccount, fontSize = 17.sp, color = White)
+            Text(s.createAccount, fontSize = 17.sp, color = MaterialTheme.colorScheme.onSurface)
         }
 
         Spacer(Modifier.height(8.dp))
@@ -298,7 +329,7 @@ fun SignUpScreen(store: AccountStore, onBack: () -> Unit, onSuccess: () -> Unit)
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(s.haveAccount, color = LightGray, fontSize = 14.sp)
+            Text(s.haveAccount, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
             TextButton(onClick = onBack) {
                 Text(s.login, color = Red, fontWeight = FontWeight.Bold)
             }

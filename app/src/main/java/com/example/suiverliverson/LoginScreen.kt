@@ -1,6 +1,5 @@
 package com.example.suiverliverson
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -31,16 +31,17 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -48,20 +49,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.suiverliverson.ui.theme.DarkGray
-import com.example.suiverliverson.ui.theme.LightGray
-import com.example.suiverliverson.ui.theme.Purple
+import com.example.suiverliverson.ui.theme.AppBackground
 import com.example.suiverliverson.ui.theme.Red
 import com.example.suiverliverson.ui.theme.White
-
-private val buildingWidths = listOf(
-    0.07f, 0.05f, 0.08f, 0.06f, 0.07f, 0.05f, 0.09f, 0.06f,
-    0.07f, 0.05f, 0.08f, 0.06f, 0.07f, 0.05f, 0.08f
-)
-private val buildingHeights = listOf(
-    0.40f, 0.70f, 0.55f, 0.90f, 0.50f, 0.80f, 0.60f, 1.00f,
-    0.45f, 0.75f, 0.65f, 0.95f, 0.50f, 0.85f, 0.55f
-)
 
 @Composable
 fun LoginScreen(
@@ -71,6 +61,9 @@ fun LoginScreen(
     onForgotPassword: () -> Unit
 ) {
     val s = LocalStrings.current
+    val darkMode = LocalDarkMode.current
+    val setDarkMode = LocalSetDarkMode.current
+    val foreground = MaterialTheme.colorScheme.onBackground
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
@@ -78,52 +71,11 @@ fun LoginScreen(
 
     val fieldColors = appFieldColors()
 
-    Box(Modifier.fillMaxSize()) {
-        Canvas(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(100.dp)
-        ) {
-            val w = size.width
-            val h = size.height
-
-            drawRect(
-                Brush.verticalGradient(
-                    listOf(Color.Transparent, Color(0xFFB03A8C).copy(alpha = 0.30f))
-                )
-            )
-
-            var x = 0f
-            buildingWidths.forEachIndexed { i, bw ->
-                val width = w * bw
-                val height = h * buildingHeights[i]
-                val top = h - height
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        listOf(Purple.copy(alpha = 0.40f), Purple.copy(alpha = 0.10f)),
-                        startY = top,
-                        endY = h
-                    ),
-                    topLeft = Offset(x + 1.5f, top),
-                    size = Size(width - 3f, height)
-                )
-                var wy = top + 10f
-                while (wy < h - 8f) {
-                    var wx = x + 8f
-                    while (wx < x + width - 10f) {
-                        drawRect(
-                            Color(0xFFFF6FA8).copy(alpha = 0.22f),
-                            Offset(wx, wy),
-                            Size(3f, 4f)
-                        )
-                        wx += 12f
-                    }
-                    wy += 16f
-                }
-                x += width
-            }
-        }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(if (darkMode) AppBackground else Color.White)
+    ) {
 
         Column(
             modifier = Modifier
@@ -132,17 +84,31 @@ fun LoginScreen(
                 .padding(horizontal = 24.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            LiversonLogo(iconSize = 100.dp, textSize = 38.sp)
-            Spacer(Modifier.height(16.dp))
-            Text(s.driverLogin, color = White, fontSize = 20.sp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(if (darkMode) "Dark mode" else "Light mode", color = foreground, fontSize = 12.sp)
+                Switch(
+                    checked = darkMode,
+                    onCheckedChange = setDarkMode,
+                    modifier = Modifier.scale(0.76f),
+                    colors = SwitchDefaults.colors(checkedTrackColor = Red)
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            LiversonLogo(iconSize = 150.dp, textSize = 34.sp)
+            Spacer(Modifier.height(12.dp))
+            Text(s.driverLogin, color = foreground, fontSize = 20.sp)
             Spacer(Modifier.height(28.dp))
 
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it; error = null },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text(s.emailPhone, color = LightGray) },
-                leadingIcon = { Icon(Icons.Default.Email, null, tint = LightGray) },
+                placeholder = { Text(s.emailPhone, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                leadingIcon = { Icon(Icons.Default.Email, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                 singleLine = true,
                 shape = RoundedCornerShape(14.dp),
                 colors = fieldColors,
@@ -153,15 +119,15 @@ fun LoginScreen(
                 value = password,
                 onValueChange = { password = it; error = null },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text(s.password, color = LightGray) },
-                leadingIcon = { Icon(Icons.Default.Lock, null, tint = LightGray) },
+                placeholder = { Text(s.password, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                leadingIcon = { Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                 trailingIcon = {
                     IconButton(onClick = { showPassword = !showPassword }) {
                         Icon(
                             if (showPassword) Icons.Default.VisibilityOff
                             else Icons.Default.Visibility,
                             contentDescription = null,
-                            tint = LightGray
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
@@ -206,7 +172,7 @@ fun LoginScreen(
 
             Spacer(Modifier.height(4.dp))
             TextButton(onClick = onForgotPassword) {
-                Text(s.forgotPassword, color = LightGray, fontSize = 14.sp)
+                Text(s.forgotPassword, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
             }
             Spacer(Modifier.height(8.dp))
 
@@ -214,14 +180,14 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                HorizontalDivider(Modifier.weight(1f), color = DarkGray)
+                HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.outline)
                 Text(
                     s.or,
-                    color = LightGray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
-                HorizontalDivider(Modifier.weight(1f), color = DarkGray)
+                HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.outline)
             }
             Spacer(Modifier.height(16.dp))
 
@@ -229,9 +195,9 @@ fun LoginScreen(
                 onClick = { },
                 shape = RoundedCornerShape(24.dp)
             ) {
-                Icon(Icons.Default.Headset, null, tint = White)
+                Icon(Icons.Default.Headset, null, tint = foreground)
                 Spacer(Modifier.width(8.dp))
-                Text(s.contactSupport, color = White)
+                Text(s.contactSupport, color = foreground)
             }
 
             Spacer(Modifier.height(12.dp))
@@ -239,7 +205,7 @@ fun LoginScreen(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(s.noAccount, color = LightGray, fontSize = 14.sp)
+                Text(s.noAccount, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                 TextButton(onClick = onCreateAccount) {
                     Text(s.createAccount, color = Red, fontWeight = FontWeight.Bold)
                 }

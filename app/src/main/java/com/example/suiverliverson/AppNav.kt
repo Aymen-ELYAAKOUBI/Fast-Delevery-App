@@ -1,5 +1,10 @@
 package com.example.suiverliverson
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -78,7 +83,11 @@ fun AppNav() {
         NavHost(
             navController = nav,
             startDestination = "splash",
-            modifier = Modifier.padding(padding)
+            modifier = Modifier.padding(padding),
+            enterTransition = { fadeIn(tween(240)) + slideInHorizontally(tween(240)) { it / 18 } },
+            exitTransition = { fadeOut(tween(160)) + slideOutHorizontally(tween(160)) { -it / 24 } },
+            popEnterTransition = { fadeIn(tween(220)) + slideInHorizontally(tween(220)) { -it / 24 } },
+            popExitTransition = { fadeOut(tween(160)) + slideOutHorizontally(tween(160)) { it / 18 } }
         ) {
             composable("splash") {
                 SplashScreen {
@@ -119,10 +128,17 @@ fun AppNav() {
                 )
             }
             composable(Tab.STATS.route) {
-                StatsScreen()
+                StatsScreen(deliveryManager)
             }
             composable(Tab.MAP.route) {
-                MapScreen(deliveryManager = deliveryManager)
+                MapScreen(
+                    deliveryManager = deliveryManager,
+                    onDeliveryComplete = {
+                        if (!nav.popBackStack(Tab.HOME.route, inclusive = false)) {
+                            nav.navigate(Tab.HOME.route) { launchSingleTop = true }
+                        }
+                    }
+                )
             }
             composable(Tab.PROFILE.route) {
                 ProfileScreen(

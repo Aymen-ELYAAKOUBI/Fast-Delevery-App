@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Settings
@@ -39,6 +40,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,9 +61,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.example.suiverliverson.ui.theme.AppSurface
-import com.example.suiverliverson.ui.theme.DarkGray
-import com.example.suiverliverson.ui.theme.LightGray
 import com.example.suiverliverson.ui.theme.Red
 import com.example.suiverliverson.ui.theme.White
 import com.google.zxing.BarcodeFormat
@@ -145,6 +144,7 @@ fun ProfileScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
@@ -155,7 +155,7 @@ fun ProfileScreen(
         ) {
             Text(
                 text = s.profile,
-                color = White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -169,7 +169,7 @@ fun ProfileScreen(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = AppSurface)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(
                 modifier = Modifier
@@ -190,19 +190,22 @@ fun ProfileScreen(
                         )
                     } else {
                         Image(
-                            painter = painterResource(R.drawable.avatar),
+                            painter = painterResource(
+                                if (account?.gender == "woman") R.drawable.woman_avatar else R.drawable.man_avatar
+                            ),
                             contentDescription = null,
                             modifier = Modifier
                                 .size(90.dp)
                                 .clip(CircleShape)
-                                .border(2.dp, Red, CircleShape)
+                                .border(2.dp, Red, CircleShape),
+                            contentScale = ContentScale.Crop
                         )
                     }
                 }
                 Spacer(Modifier.height(12.dp))
                 Text(
                     text = "${account?.firstName ?: "Driver"} ${account?.lastName ?: ""}",
-                    color = White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -220,9 +223,9 @@ fun ProfileScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = Red),
                     shape = RoundedCornerShape(20.dp)
                 ) {
-                    Icon(Icons.Default.QrCode, contentDescription = null, tint = White)
+                    Icon(Icons.Default.QrCode, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
                     Spacer(Modifier.width(8.dp))
-                    Text(s.qrCode, color = White, fontWeight = FontWeight.Bold)
+                    Text(s.qrCode, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -235,7 +238,7 @@ fun ProfileScreen(
                 .fillMaxWidth()
                 .clickable { onNavigateToHistory() },
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = AppSurface)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Row(
                 modifier = Modifier.padding(16.dp),
@@ -245,7 +248,7 @@ fun ProfileScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.History, contentDescription = null, tint = Red)
                     Spacer(Modifier.width(10.dp))
-                    Text(s.orderHistory, color = White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(s.orderHistory, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
                 Text("${deliveryManager.completedOrdersList.size} >", color = Red, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
@@ -255,7 +258,7 @@ fun ProfileScreen(
 
         Text(
             text = s.driverInfo,
-            color = White,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold
         )
@@ -264,14 +267,15 @@ fun ProfileScreen(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = AppSurface)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 ProfileInfoRow(Icons.Default.Phone, "Téléphone / رقم الهاتف", account?.login ?: "+212 6 12 34 56 78")
                 ProfileInfoRow(Icons.Default.Email, "E-mail / البريد الإلكتروني", "${account?.firstName?.lowercase() ?: "driver"}@liverson.ma")
                 ProfileInfoRow(Icons.Default.Badge, s.licenseType, "Permis: ${account?.license ?: "B"}")
                 ProfileInfoRow(Icons.Default.Person, s.age, "${account?.age ?: 25} ans")
-                ProfileInfoRow(Icons.AutoMirrored.Filled.DirectionsBike, "Véhicule / الدراجة", "Scooter 125cc (الدار البيضاء 🇲🇦)")
+                ProfileInfoRow(Icons.Default.LocationOn, s.currentLocation, account?.location ?: "Casablanca")
+                ProfileInfoRow(Icons.AutoMirrored.Filled.DirectionsBike, "Véhicule / الدراجة", "Scooter")
             }
         }
 
@@ -282,7 +286,7 @@ fun ProfileScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = DarkGray),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             shape = RoundedCornerShape(16.dp)
         ) {
             Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, tint = Red)
@@ -298,7 +302,7 @@ fun ProfileScreen(
                     .fillMaxWidth()
                     .padding(16.dp),
                 shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = AppSurface)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
@@ -306,7 +310,7 @@ fun ProfileScreen(
                 ) {
                     Text(
                         text = s.qrCode,
-                        color = White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -326,7 +330,7 @@ fun ProfileScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = Red),
                         shape = RoundedCornerShape(16.dp)
                     ) {
-                        Text("Fermer / إغلاق", color = White, fontWeight = FontWeight.Bold)
+                        Text("Fermer / إغلاق", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -346,15 +350,15 @@ private fun ProfileInfoRow(icon: ImageVector, label: String, value: String) {
             modifier = Modifier
                 .size(36.dp)
                 .clip(CircleShape)
-                .background(DarkGray),
+                .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
             Icon(icon, contentDescription = null, tint = Red, modifier = Modifier.size(20.dp))
         }
         Spacer(Modifier.width(12.dp))
         Column {
-            Text(label, color = LightGray, fontSize = 12.sp)
-            Text(value, color = White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+            Text(value, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         }
     }
 }

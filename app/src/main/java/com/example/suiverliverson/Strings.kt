@@ -2,6 +2,11 @@ package com.example.suiverliverson
 
 import androidx.compose.runtime.compositionLocalOf
 
+val LocalDarkMode = compositionLocalOf { true }
+val LocalSetDarkMode = compositionLocalOf<(Boolean) -> Unit> { {} }
+val LocalOrderNotificationsEnabled = compositionLocalOf { false }
+val LocalSetOrderNotificationsEnabled = compositionLocalOf<(Boolean) -> Unit> { {} }
+
 data class Strings(
     val slogan: String,
     val login: String,

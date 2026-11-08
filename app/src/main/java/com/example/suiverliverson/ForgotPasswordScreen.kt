@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -24,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,9 +40,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.suiverliverson.ui.theme.Green
-import com.example.suiverliverson.ui.theme.LightGray
 import com.example.suiverliverson.ui.theme.Red
-import com.example.suiverliverson.ui.theme.White
 
 @Composable
 fun ForgotPasswordScreen(store: AccountStore, onBack: () -> Unit) {
@@ -60,16 +60,17 @@ fun ForgotPasswordScreen(store: AccountStore, onBack: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp, vertical = 16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = White)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = MaterialTheme.colorScheme.onSurface)
             }
             Text(
                 s.resetPassword,
-                color = White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -87,18 +88,18 @@ fun ForgotPasswordScreen(store: AccountStore, onBack: () -> Unit) {
                 shape = shape,
                 colors = ButtonDefaults.buttonColors(containerColor = Red)
             ) {
-                Text(s.login, fontSize = 17.sp, color = White)
+                Text(s.login, fontSize = 17.sp, color = MaterialTheme.colorScheme.onSurface)
             }
         } else {
-            Text(s.resetHint, color = LightGray, fontSize = 14.sp)
+            Text(s.resetHint, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
             Spacer(Modifier.height(20.dp))
 
             OutlinedTextField(
                 value = login,
                 onValueChange = { login = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text(s.emailPhone, color = LightGray) },
-                leadingIcon = { Icon(Icons.Default.Email, null, tint = LightGray) },
+                placeholder = { Text(s.emailPhone, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                leadingIcon = { Icon(Icons.Default.Email, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                 singleLine = true,
                 shape = shape,
                 colors = colors,
@@ -110,8 +111,8 @@ fun ForgotPasswordScreen(store: AccountStore, onBack: () -> Unit) {
                 value = lastName,
                 onValueChange = { lastName = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text(s.lastName, color = LightGray) },
-                leadingIcon = { Icon(Icons.Default.Person, null, tint = LightGray) },
+                placeholder = { Text(s.lastName, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                leadingIcon = { Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                 singleLine = true,
                 shape = shape,
                 colors = colors
@@ -122,7 +123,7 @@ fun ForgotPasswordScreen(store: AccountStore, onBack: () -> Unit) {
                 value = age,
                 onValueChange = { if (it.length <= 2 && it.all { c -> c.isDigit() }) age = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text(s.age, color = LightGray) },
+                placeholder = { Text(s.age, color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 singleLine = true,
                 shape = shape,
                 colors = colors,
@@ -134,15 +135,15 @@ fun ForgotPasswordScreen(store: AccountStore, onBack: () -> Unit) {
                 value = newPassword,
                 onValueChange = { newPassword = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text(s.newPassword, color = LightGray) },
-                leadingIcon = { Icon(Icons.Default.Lock, null, tint = LightGray) },
+                placeholder = { Text(s.newPassword, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                leadingIcon = { Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                 trailingIcon = {
                     IconButton(onClick = { showPassword = !showPassword }) {
                         Icon(
                             if (showPassword) Icons.Default.VisibilityOff
                             else Icons.Default.Visibility,
                             contentDescription = null,
-                            tint = LightGray
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
@@ -159,8 +160,8 @@ fun ForgotPasswordScreen(store: AccountStore, onBack: () -> Unit) {
                 value = confirm,
                 onValueChange = { confirm = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text(s.confirmPassword, color = LightGray) },
-                leadingIcon = { Icon(Icons.Default.Lock, null, tint = LightGray) },
+                placeholder = { Text(s.confirmPassword, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                leadingIcon = { Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                 visualTransformation = if (showPassword) VisualTransformation.None
                 else PasswordVisualTransformation(),
                 singleLine = true,
@@ -196,7 +197,7 @@ fun ForgotPasswordScreen(store: AccountStore, onBack: () -> Unit) {
                 shape = shape,
                 colors = ButtonDefaults.buttonColors(containerColor = Red)
             ) {
-                Text(s.resetPassword, fontSize = 17.sp, color = White)
+                Text(s.resetPassword, fontSize = 17.sp, color = MaterialTheme.colorScheme.onSurface)
             }
         }
     }

@@ -39,6 +39,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -59,10 +60,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.example.suiverliverson.ui.theme.AppSurface
-import com.example.suiverliverson.ui.theme.DarkGray
 import com.example.suiverliverson.ui.theme.Green
-import com.example.suiverliverson.ui.theme.LightGray
 import com.example.suiverliverson.ui.theme.Red
 import com.example.suiverliverson.ui.theme.White
 import kotlinx.coroutines.delay
@@ -87,13 +85,17 @@ fun HomeScreen(
         if (online) {
             delay(2000L)
             if (incomingOrder == null) {
-                incomingOrder = generateRandomIncomingOrder()
+                val newOrder = generateRandomIncomingOrder()
+                incomingOrder = newOrder
+                OrderNotificationManager.showNewOrder(context, newOrder)
             }
         }
         while (online) {
             delay(15 * 60 * 1000L)
             if (incomingOrder == null) {
-                incomingOrder = generateRandomIncomingOrder()
+                val newOrder = generateRandomIncomingOrder()
+                incomingOrder = newOrder
+                OrderNotificationManager.showNewOrder(context, newOrder)
             }
         }
     }
@@ -118,7 +120,7 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .padding(16.dp),
                 shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = AppSurface)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(
                     modifier = Modifier.padding(20.dp),
@@ -132,7 +134,7 @@ fun HomeScreen(
                         Spacer(Modifier.width(8.dp))
                         Text(
                             text = s.incomingOrder,
-                            color = White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -147,8 +149,8 @@ fun HomeScreen(
                         CustomerAvatar(type = order.avatarType)
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(order.customerName, color = White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Text(order.id, color = LightGray, fontSize = 12.sp)
+                            Text(order.customerName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(order.id, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         }
                         Box(
                             modifier = Modifier
@@ -156,7 +158,7 @@ fun HomeScreen(
                                 .background(Green)
                                 .padding(horizontal = 10.dp, vertical = 6.dp)
                         ) {
-                            Text("$${"%.2f".format(order.price)}", color = White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("$${"%.2f".format(order.price)}", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
                     }
 
@@ -166,12 +168,12 @@ fun HomeScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(DarkGray)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                             .padding(10.dp)
                     ) {
                         Text(
                             text = s.orderCategory.format(order.orderType),
-                            color = White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -183,19 +185,19 @@ fun HomeScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(DarkGray)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                             .padding(12.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Red))
                             Spacer(Modifier.width(8.dp))
-                            Text("من (Pickup): ${order.pickup}", color = LightGray, fontSize = 12.sp)
+                            Text("من (Pickup): ${order.pickup}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         }
                         Spacer(Modifier.height(6.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Green))
                             Spacer(Modifier.width(8.dp))
-                            Text("إلى (Delivery): ${order.client}", color = LightGray, fontSize = 12.sp)
+                            Text("إلى (Delivery): ${order.client}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         }
                         Spacer(Modifier.height(6.dp))
                         Text("المسافة: ${order.distanceKm} كم", color = Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -210,14 +212,15 @@ fun HomeScreen(
                         Button(
                             onClick = { incomingOrder = null },
                             modifier = Modifier.weight(1f).height(48.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = DarkGray),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                             shape = RoundedCornerShape(14.dp)
                         ) {
-                            Text(s.reject, color = White, fontWeight = FontWeight.Bold)
+                            Text(s.reject, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                         }
                         Button(
                             onClick = {
                                 deliveryManager.acceptOrder(order)
+                                availableOrders = availableOrders.filterNot { it.id == order.id }
                                 incomingOrder = null
                                 onNavigateToMap()
                             },
@@ -225,7 +228,7 @@ fun HomeScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = Green),
                             shape = RoundedCornerShape(14.dp)
                         ) {
-                            Text(s.accept, color = White, fontWeight = FontWeight.Bold)
+                            Text(s.accept, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -236,6 +239,7 @@ fun HomeScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
@@ -249,16 +253,16 @@ fun HomeScreen(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(AppSurface),
+                    .background(MaterialTheme.colorScheme.surface),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.GridView, contentDescription = null, tint = White)
+                Icon(Icons.Default.GridView, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = {
                     availableOrders = generateRandomOrdersList()
                 }) {
-                    Icon(Icons.Default.Refresh, contentDescription = null, tint = White)
+                    Icon(Icons.Default.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
                 }
                 Spacer(Modifier.width(4.dp))
                 // أيقونة NotificationsActive الحمراء المميزة لفتح صفحة الإشعارات
@@ -279,7 +283,7 @@ fun HomeScreen(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = AppSurface)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Row(
                 modifier = Modifier.padding(16.dp),
@@ -297,19 +301,22 @@ fun HomeScreen(
                         )
                     } else {
                         Image(
-                            painter = painterResource(R.drawable.avatar),
+                            painter = painterResource(
+                                if (account?.gender == "woman") R.drawable.woman_avatar else R.drawable.man_avatar
+                            ),
                             contentDescription = null,
                             modifier = Modifier
                                 .size(56.dp)
-                                .clip(CircleShape)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
                         )
                     }
                     Box(
                         modifier = Modifier
                             .size(14.dp)
                             .clip(CircleShape)
-                            .background(if (online) Green else LightGray)
-                            .border(2.dp, AppSurface, CircleShape)
+                            .background(if (online) Green else MaterialTheme.colorScheme.outline)
+                            .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape)
                             .align(Alignment.BottomEnd)
                     )
                 }
@@ -319,13 +326,13 @@ fun HomeScreen(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = if (online) s.youAreOnline else s.youAreOffline,
-                        color = White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = if (online) s.readyForOrders else s.goOnlineToStart,
-                        color = LightGray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp
                     )
                 }
@@ -337,7 +344,7 @@ fun HomeScreen(
                         checkedThumbColor = White,
                         checkedTrackColor = Green,
                         uncheckedThumbColor = White,
-                        uncheckedTrackColor = DarkGray
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                 )
             }
@@ -374,7 +381,7 @@ fun HomeScreen(
             StatCard(
                 icon = Icons.Default.LocationOn,
                 tint = Red,
-                value = "Casablanca",
+                value = account?.location?.ifBlank { "Casablanca" } ?: "Casablanca",
                 label = s.currentLocation,
                 modifier = Modifier.weight(1f)
             )
@@ -387,7 +394,7 @@ fun HomeScreen(
         if (activeOrder != null) {
             Text(
                 text = s.activeTrip,
-                color = White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -398,7 +405,7 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .clickable { onNavigateToMap() },
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = AppSurface)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -407,8 +414,8 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text(s.orderNumber.format(activeOrder.id), color = LightGray, fontSize = 12.sp)
-                            Text(s.customer.format(activeOrder.customerName), color = White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(s.orderNumber.format(activeOrder.id), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                            Text(s.customer.format(activeOrder.customerName), color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
                         Box(
                             modifier = Modifier
@@ -416,7 +423,7 @@ fun HomeScreen(
                                 .background(Red)
                                 .padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
-                            Text(s.inTransit, color = White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text(s.inTransit, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
 
@@ -431,13 +438,13 @@ fun HomeScreen(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(DarkGray)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
-                            Text("${activeOrder.distanceKm} km", color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("${activeOrder.distanceKm} km", color = MaterialTheme.colorScheme.onSurface, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
-                        Box(modifier = Modifier.weight(0.4f).height(4.dp).background(DarkGray))
-                        Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(DarkGray))
+                        Box(modifier = Modifier.weight(0.4f).height(4.dp).background(MaterialTheme.colorScheme.surfaceVariant))
+                        Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant))
                     }
 
                     Spacer(Modifier.height(12.dp))
@@ -446,9 +453,9 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(activeOrder.pickup, color = LightGray, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                        Text(activeOrder.pickup, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.weight(1f))
                         Spacer(Modifier.width(8.dp))
-                        Text(activeOrder.client, color = LightGray, fontSize = 12.sp)
+                        Text(activeOrder.client, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                     }
 
                     Spacer(Modifier.height(12.dp))
@@ -461,7 +468,7 @@ fun HomeScreen(
                             modifier = Modifier
                                 .size(38.dp)
                                 .clip(CircleShape)
-                                .background(DarkGray),
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(Icons.Default.Call, contentDescription = null, tint = Green)
@@ -482,7 +489,7 @@ fun HomeScreen(
             ) {
                 Text(
                     text = s.newTripRequests,
-                    color = White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -517,7 +524,7 @@ private fun StatCard(
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = AppSurface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier = Modifier
@@ -529,15 +536,15 @@ private fun StatCard(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(DarkGray),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(icon, null, tint = tint)
             }
             Spacer(Modifier.width(10.dp))
             Column {
-                Text(value, color = White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Text(label, color = LightGray, fontSize = 11.sp)
+                Text(value, color = MaterialTheme.colorScheme.onSurface, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
         }
     }
@@ -557,7 +564,7 @@ private fun CustomerAvatar(type: AvatarType) {
             .size(44.dp)
             .clip(CircleShape)
             .background(bgColor)
-            .border(1.5.dp, White.copy(alpha = 0.5f), CircleShape),
+            .border(1.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f), CircleShape),
         contentAlignment = Alignment.Center
     ) {
         Text(text = emoji, fontSize = 22.sp)
@@ -571,7 +578,7 @@ private fun NewTripRequestCard(order: Order, onClick: () -> Unit, infoText: Stri
             .fillMaxWidth()
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = AppSurface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier = Modifier.padding(14.dp),
@@ -580,15 +587,15 @@ private fun NewTripRequestCard(order: Order, onClick: () -> Unit, infoText: Stri
             CustomerAvatar(type = order.avatarType)
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(order.customerName, color = White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(order.customerName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 Text(
                     "${order.id} • $${"%.2f".format(order.price)} • ${order.distanceKm} km",
-                    color = LightGray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp
                 )
                 Text(
                     "من: ${order.pickup}",
-                    color = LightGray.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     fontSize = 11.sp
                 )
             }
@@ -597,7 +604,7 @@ private fun NewTripRequestCard(order: Order, onClick: () -> Unit, infoText: Stri
                 colors = ButtonDefaults.buttonColors(containerColor = Red),
                 shape = RoundedCornerShape(20.dp)
             ) {
-                Text(infoText, color = White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Text(infoText, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 12.sp)
             }
         }
     }

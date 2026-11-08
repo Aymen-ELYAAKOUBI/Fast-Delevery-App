@@ -1,5 +1,8 @@
 package com.example.suiverliverson
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -23,12 +26,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,38 +36,35 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.suiverliverson.ui.theme.AppSurface
-import com.example.suiverliverson.ui.theme.DarkGray
 import com.example.suiverliverson.ui.theme.Green
-import com.example.suiverliverson.ui.theme.LightGray
 import com.example.suiverliverson.ui.theme.Red
-import com.example.suiverliverson.ui.theme.White
-import kotlinx.coroutines.delay
 
 @Composable
-fun StatsScreen() {
+fun StatsScreen(deliveryManager: DeliveryManager) {
     val s = LocalStrings.current
-    var reviewsList by remember { mutableStateOf(initialReviewsList) }
-
-    // محاكاة حية لتلقي التقييمات
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(12_000L)
-            val newRev = generateRandomReview()
-            reviewsList = listOf(newRev) + reviewsList
-        }
+    val cardColor = if (LocalDarkMode.current) {
+        MaterialTheme.colorScheme.surface
+    } else {
+        Color(0xFFF1F4F8)
+    }
+    val reviewsList = deliveryManager.customerReviewsList
+    val reviewCount = reviewsList.size
+    val averageRating = if (reviewCount == 0) 0.0 else reviewsList.map { it.rating }.average()
+    val ratingDistribution = (5 downTo 1).associateWith { stars ->
+        reviewsList.count { it.rating.toInt() == stars }
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
         // العنوان مترجم
         Text(
             text = s.stats,
-            color = White,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )
@@ -77,7 +74,7 @@ fun StatsScreen() {
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = AppSurface)
+            colors = CardDefaults.cardColors(containerColor = cardColor)
         ) {
             Row(
                 modifier = Modifier.padding(20.dp),
@@ -85,8 +82,8 @@ fun StatsScreen() {
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "4.8",
-                        color = White,
+                        text = if (reviewCount == 0) "—" else "%.1f".format(averageRating),
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 42.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -102,8 +99,8 @@ fun StatsScreen() {
                     }
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = s.reviewsCount.format(reviewsList.size + 120),
-                        color = LightGray,
+                        text = s.reviewsCount.format(reviewCount),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp
                     )
                 }
@@ -111,11 +108,11 @@ fun StatsScreen() {
                 Spacer(Modifier.width(20.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
-                    RatingBarItem(stars = "5★", progress = 0.85f)
-                    RatingBarItem(stars = "4★", progress = 0.10f)
-                    RatingBarItem(stars = "3★", progress = 0.03f)
-                    RatingBarItem(stars = "2★", progress = 0.01f)
-                    RatingBarItem(stars = "1★", progress = 0.01f)
+                    (5 downTo 1).forEach { stars ->
+                        val count = ratingDistribution.getValue(stars)
+                        val progress = if (reviewCount == 0) 0f else count / reviewCount.toFloat()
+                        RatingBarItem(stars = "$stars★", progress = progress)
+                    }
                 }
             }
         }
@@ -125,7 +122,7 @@ fun StatsScreen() {
         // الإنفوجرافيك الأسبوعي مترجم
         Text(
             text = s.weeklyInfographic,
-            color = White,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold
         )
@@ -134,12 +131,12 @@ fun StatsScreen() {
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = AppSurface)
+            colors = CardDefaults.cardColors(containerColor = cardColor)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     text = s.weeklyPerformance,
-                    color = LightGray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp
                 )
                 Spacer(Modifier.height(16.dp))
@@ -159,15 +156,20 @@ fun StatsScreen() {
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Bottom
                         ) {
+                            val animatedHeight by animateDpAsState(
+                                targetValue = (100 * height).dp,
+                                animationSpec = spring(dampingRatio = 0.72f, stiffness = 180f),
+                                label = "weeklyBarHeight"
+                            )
                             Box(
                                 modifier = Modifier
                                     .width(18.dp)
-                                    .height((100 * height).dp)
+                                    .height(animatedHeight)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(if (height >= 0.9f) Red else Green)
                             )
                             Spacer(Modifier.height(8.dp))
-                            Text(day, color = LightGray, fontSize = 11.sp)
+                            Text(day, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                         }
                     }
                 }
@@ -184,47 +186,57 @@ fun StatsScreen() {
         ) {
             Text(
                 text = s.customerReviews,
-                color = White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(Green)
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(s.liveBadge, color = Green, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            }
+            Text(
+                text = s.reviewsCount.format(reviewCount),
+                color = Green,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
         Spacer(Modifier.height(10.dp))
 
-        reviewsList.forEach { review ->
-            ReviewCard(review)
-            Spacer(Modifier.height(10.dp))
+        if (reviewsList.isEmpty()) {
+            Text(
+                text = "No completed delivery has received a customer rating yet.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(vertical = 20.dp)
+            )
+        } else {
+            reviewsList.forEach { review ->
+                ReviewCard(review)
+                Spacer(Modifier.height(10.dp))
+            }
         }
     }
 }
 
 @Composable
 private fun RatingBarItem(stars: String, progress: Float) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = 220f),
+        label = "ratingDistribution"
+    )
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.padding(vertical = 2.dp)
     ) {
-        Text(stars, color = LightGray, fontSize = 11.sp, modifier = Modifier.width(24.dp))
+        Text(stars, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, modifier = Modifier.width(24.dp))
         Box(
             modifier = Modifier
                 .weight(1f)
                 .height(6.dp)
                 .clip(RoundedCornerShape(3.dp))
-                .background(DarkGray)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(progress)
+                    .fillMaxWidth(animatedProgress)
                     .height(6.dp)
                     .clip(RoundedCornerShape(3.dp))
                     .background(Color(0xFFFFB300))
@@ -235,10 +247,15 @@ private fun RatingBarItem(stars: String, progress: Float) {
 
 @Composable
 private fun ReviewCard(review: CustomerReview) {
+    val cardColor = if (LocalDarkMode.current) {
+        MaterialTheme.colorScheme.surface
+    } else {
+        Color(0xFFF1F4F8)
+    }
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = AppSurface)
+        colors = CardDefaults.cardColors(containerColor = cardColor)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
@@ -265,15 +282,15 @@ private fun ReviewCard(review: CustomerReview) {
                             .size(38.dp)
                             .clip(CircleShape)
                             .background(avatarColor)
-                            .border(1.dp, White.copy(alpha = 0.4f), CircleShape),
+                            .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(avatarEmoji, fontSize = 18.sp)
                     }
                     Spacer(Modifier.width(10.dp))
                     Column {
-                        Text(review.customerName, color = White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text(review.timeAgo, color = LightGray, fontSize = 11.sp)
+                        Text(review.customerName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("Order ${review.id} · ${review.timeAgo}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
                 }
 
@@ -285,14 +302,14 @@ private fun ReviewCard(review: CustomerReview) {
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(Modifier.width(4.dp))
-                    Text("%.1f".format(review.rating), color = White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text("%.1f".format(review.rating), color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
             }
 
             Spacer(Modifier.height(8.dp))
             Text(
                 text = review.comment,
-                color = LightGray,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 13.sp
             )
         }
