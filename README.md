@@ -1,6 +1,6 @@
-# Fast Delivery
+# Fast Delivery App
 
-**Fast Delivery** est une application Android de démonstration pour la gestion et le suivi de livraisons. Elle propose une interface dédiée aux livreurs, avec des commandes, des itinéraires sur carte et des écrans de suivi d’activité.
+**Fast Delivery App** est une application Android complète pour la gestion et le suivi de livraisons en temps réel avec Firebase. Elle propose une interface dédiée aux livreurs, avec des commandes, des itinéraires sur carte, l’authentification Firebase et la synchronisation des données sur Cloud Firestore.
 
 > Le projet est en cours de développement. Les données de commandes et de statistiques sont actuellement générées localement pour la démonstration. L’intégration Firebase est prévue/en cours et n’est pas encore configurée dans cette version.
 
@@ -63,7 +63,7 @@ Les itinéraires sont demandés à OSRM. Le code prévoit Google Routes comme so
 
 ## Firebase
 
-L’intégration Firebase est un chantier en cours. L’application n’utilise pas encore Firebase Authentication, Cloud Firestore ni un backend Firebase dans la version actuelle. Cette section pourra être mise à jour à mesure que ces services seront intégrés.
+L’application est intégrée avec **Firebase Authentication** (Email/Password) et **Cloud Firestore** pour la gestion des comptes livreurs et le stockage en temps réel des commandes terminées.
 
 ## Structure du projet
 

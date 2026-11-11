@@ -46,7 +46,7 @@ private suspend fun fetchOpenSourceRoadRoute(
     val connection = (url.openConnection() as HttpURLConnection).apply {
         connectTimeout = 10_000
         readTimeout = 10_000
-        setRequestProperty("User-Agent", "Suiverliverson/1.0")
+        setRequestProperty("User-Agent", "FastDeliveryApp/1.0")
     }
 
     try {

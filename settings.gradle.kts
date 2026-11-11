@@ -22,6 +22,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Suiverliverson"
+rootProject.name = "Fast Delivery App"
 include(":app")
  

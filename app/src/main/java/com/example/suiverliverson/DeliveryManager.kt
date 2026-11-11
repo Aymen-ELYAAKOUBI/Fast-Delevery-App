@@ -7,6 +7,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 
 enum class DeliveryStage {
     IDLE,
@@ -33,6 +36,12 @@ data class CompletedOrder(
 )
 
 class DeliveryManager {
+    private val db: FirebaseFirestore?
+        get() = runCatching { FirebaseFirestore.getInstance() }.getOrNull()
+
+    private val auth: FirebaseAuth?
+        get() = runCatching { FirebaseAuth.getInstance() }.getOrNull()
+
     var totalEarnings by mutableDoubleStateOf(186.00)
     var completedTrips by mutableIntStateOf(112)
     var rating by mutableDoubleStateOf(0.0)
@@ -58,6 +67,42 @@ class DeliveryManager {
         CompletedOrder("#HTO78110", "Sofiane Touati", 18.00, 2.5, "Tacos de Lyon أنفا", "حي المعاريف", "اليوم 12:15"),
         CompletedOrder("#HTO65432", "Nour-El-Houda", 32.00, 5.0, "Burger King غوتييه", "حي بورغون", "أمس 19:40")
     )
+
+    init {
+        loadHistoryFromFirestore()
+    }
+
+    fun loadHistoryFromFirestore() {
+        val uid = auth?.currentUser?.uid ?: return
+        val firestore = db ?: return
+
+        firestore.collection("users").document(uid).collection("completed_orders")
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .get()
+            .addOnSuccessListener { query ->
+                if (!query.isEmpty) {
+                    completedOrdersList.clear()
+                    var sumEarnings = 0.0
+                    for (doc in query.documents) {
+                        val order = CompletedOrder(
+                            id = doc.getString("id") ?: doc.id,
+                            customerName = doc.getString("customerName") ?: "",
+                            price = doc.getDouble("price") ?: 0.0,
+                            distanceKm = doc.getDouble("distanceKm") ?: 0.0,
+                            pickup = doc.getString("pickup") ?: "",
+                            delivery = doc.getString("delivery") ?: "",
+                            completedAt = doc.getString("completedAt") ?: "اليوم"
+                        )
+                        completedOrdersList.add(order)
+                        sumEarnings += order.price
+                    }
+                    if (completedOrdersList.isNotEmpty()) {
+                        completedTrips = completedOrdersList.size
+                        totalEarnings = sumEarnings
+                    }
+                }
+            }
+    }
 
     fun acceptOrder(order: Order) {
         if (currentActiveOrder != null && deliveryStage != DeliveryStage.DELIVERED) return
@@ -87,18 +132,35 @@ class DeliveryManager {
         completedTrips += 1
         deliveryStage = DeliveryStage.DELIVERED
 
-        completedOrdersList.add(
-            0,
-            CompletedOrder(
-                id = order.id,
-                customerName = order.customerName,
-                price = order.price,
-                distanceKm = order.distanceKm,
-                pickup = order.pickup,
-                delivery = order.client,
-                completedAt = "الآن"
-            )
+        val completedOrder = CompletedOrder(
+            id = order.id,
+            customerName = order.customerName,
+            price = order.price,
+            distanceKm = order.distanceKm,
+            pickup = order.pickup,
+            delivery = order.client,
+            completedAt = "الآن"
         )
+
+        completedOrdersList.add(0, completedOrder)
+
+        val uid = auth?.currentUser?.uid
+        val firestore = db
+        if (uid != null && firestore != null) {
+            val orderMap = mapOf(
+                "id" to completedOrder.id,
+                "customerName" to completedOrder.customerName,
+                "price" to completedOrder.price,
+                "distanceKm" to completedOrder.distanceKm,
+                "pickup" to completedOrder.pickup,
+                "delivery" to completedOrder.delivery,
+                "completedAt" to completedOrder.completedAt,
+                "timestamp" to System.currentTimeMillis()
+            )
+            firestore.collection("users").document(uid)
+                .collection("completed_orders").document(completedOrder.id)
+                .set(orderMap)
+        }
 
         if (customerReviewsList.none { it.id == order.id }) {
             customerReviewsList.add(0, generateReviewForOrder(order))

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -68,6 +70,7 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
 
     val fieldColors = appFieldColors()
 
@@ -150,24 +153,31 @@ fun LoginScreen(
                     if (email.isBlank() || password.isBlank()) {
                         error = s.fillAllFields
                     } else {
-                        val account = store.authenticate(email, password)
-                        if (account == null) {
-                            error = s.invalidCredentials
-                        } else {
-                            store.setCurrent(account)
-                            onLogin()
+                        isLoading = true
+                        store.authenticateWithFirebase(email, password) { account, err ->
+                            isLoading = false
+                            if (account != null) {
+                                onLogin()
+                            } else {
+                                error = err ?: s.invalidCredentials
+                            }
                         }
                     }
                 },
+                enabled = !isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Red)
             ) {
-                Text(s.login, fontSize = 17.sp, color = White)
-                Spacer(Modifier.width(8.dp))
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = White)
+                if (isLoading) {
+                    CircularProgressIndicator(color = White, modifier = Modifier.size(24.dp))
+                } else {
+                    Text(s.login, fontSize = 17.sp, color = White)
+                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = White)
+                }
             }
 
             Spacer(Modifier.height(4.dp))

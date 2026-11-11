@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -87,6 +88,7 @@ fun SignUpScreen(store: AccountStore, onBack: () -> Unit, onSuccess: () -> Unit)
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var showPassword by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
 
     val photoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -307,20 +309,31 @@ fun SignUpScreen(store: AccountStore, onBack: () -> Unit, onSuccess: () -> Unit)
                     else -> null
                 }
                 if (error == null && ageInt != null) {
-                    val account = store.register(
+                    isLoading = true
+                    store.registerWithFirebase(
                         firstName, lastName, ageInt, license, login, password, imageUri?.toString(), gender, location
-                    )
-                    store.setCurrent(account)
-                    onSuccess()
+                    ) { account, err ->
+                        isLoading = false
+                        if (account != null) {
+                            onSuccess()
+                        } else {
+                            error = err ?: "Registration failed"
+                        }
+                    }
                 }
             },
+            enabled = !isLoading,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
             shape = shape,
             colors = ButtonDefaults.buttonColors(containerColor = Red)
         ) {
-            Text(s.createAccount, fontSize = 17.sp, color = MaterialTheme.colorScheme.onSurface)
+            if (isLoading) {
+                CircularProgressIndicator(color = com.example.suiverliverson.ui.theme.White, modifier = Modifier.size(24.dp))
+            } else {
+                Text(s.createAccount, fontSize = 17.sp, color = MaterialTheme.colorScheme.onSurface)
+            }
         }
 
         Spacer(Modifier.height(8.dp))

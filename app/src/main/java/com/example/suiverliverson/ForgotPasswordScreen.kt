@@ -179,17 +179,24 @@ fun ForgotPasswordScreen(store: AccountStore, onBack: () -> Unit) {
             Button(
                 onClick = {
                     val ageInt = age.toIntOrNull()
-                    error = when {
-                        login.isBlank() || lastName.isBlank() || age.isBlank() ||
-                                newPassword.isBlank() || confirm.isBlank() -> s.fillAllFields
-                        newPassword.length < 6 -> s.passwordShort
-                        newPassword != confirm -> s.passwordMismatch
-                        ageInt == null ||
-                                !store.resetPassword(login, lastName, ageInt, newPassword) ->
-                            s.resetFailed
-                        else -> null
+                    if (login.isBlank()) {
+                        error = s.fillAllFields
+                        return@Button
                     }
-                    if (error == null) done = true
+                    store.sendPasswordResetEmail(login) { success, err ->
+                        if (success) {
+                            done = true
+                        } else {
+                            error = when {
+                                lastName.isBlank() || age.isBlank() || newPassword.isBlank() || confirm.isBlank() -> s.fillAllFields
+                                newPassword.length < 6 -> s.passwordShort
+                                newPassword != confirm -> s.passwordMismatch
+                                ageInt == null || !store.resetPassword(login, lastName, ageInt, newPassword) -> err ?: s.resetFailed
+                                else -> null
+                            }
+                            if (error == null) done = true
+                        }
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()

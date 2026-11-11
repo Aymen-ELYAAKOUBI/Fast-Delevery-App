@@ -317,7 +317,7 @@ fun ProfileScreen(
                     Spacer(Modifier.height(16.dp))
 
                     ProfessionalQrCode(
-                        data = "LIVERSON_DRIVER_${account?.id ?: "DRV1024"}",
+                        data = "FASTDELIVERY_DRIVER_${account?.id ?: "DRV1024"}",
                         modifier = Modifier.size(240.dp)
                     )
 
