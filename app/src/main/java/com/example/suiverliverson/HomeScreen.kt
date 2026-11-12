@@ -42,7 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,7 +63,8 @@ import androidx.compose.ui.window.Dialog
 import com.example.suiverliverson.ui.theme.Green
 import com.example.suiverliverson.ui.theme.Red
 import com.example.suiverliverson.ui.theme.White
-import kotlinx.coroutines.delay
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.ListenerRegistration
 
 @Composable
 fun HomeScreen(
@@ -78,26 +79,23 @@ fun HomeScreen(
     val imageUriString = account?.imageUri
     var online by remember { mutableStateOf(true) }
 
-    var availableOrders by remember { mutableStateOf(generateRandomOrdersList()) }
+    var availableOrders by remember { mutableStateOf<List<Order>>(emptyList()) }
+    var orderLoadError by remember { mutableStateOf<String?>(null) }
     var incomingOrder by remember { mutableStateOf<Order?>(null) }
+    val orderRepository = remember { OrderRepository() }
+    val driverUid = FirebaseAuth.getInstance().currentUser?.uid
 
-    LaunchedEffect(online) {
-        if (online) {
-            delay(2000L)
-            if (incomingOrder == null) {
-                val newOrder = generateRandomIncomingOrder()
-                incomingOrder = newOrder
-                OrderNotificationManager.showNewOrder(context, newOrder)
-            }
+    DisposableEffect(online, driverUid) {
+        var registration: ListenerRegistration? = null
+        if (online && driverUid != null) {
+            registration = orderRepository.listenForAvailable({ requests ->
+                availableOrders = requests.map { it.asDriverOrder() }
+                orderLoadError = null
+            }, { message -> orderLoadError = message })
+        } else {
+            availableOrders = emptyList()
         }
-        while (online) {
-            delay(15 * 60 * 1000L)
-            if (incomingOrder == null) {
-                val newOrder = generateRandomIncomingOrder()
-                incomingOrder = newOrder
-                OrderNotificationManager.showNewOrder(context, newOrder)
-            }
-        }
+        onDispose { registration?.remove() }
     }
 
     val userBitmap = remember(imageUriString) {
@@ -260,7 +258,7 @@ fun HomeScreen(
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = {
-                    availableOrders = generateRandomOrdersList()
+                    // The live Firestore listener refreshes this list automatically.
                 }) {
                     Icon(Icons.Default.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
                 }
@@ -494,12 +492,16 @@ fun HomeScreen(
                     fontWeight = FontWeight.Bold
                 )
                 TextButton(onClick = {
-                    availableOrders = generateRandomOrdersList()
+                    // The live Firestore listener refreshes this list automatically.
                 }) {
                     Text(s.seeAll, color = Red, fontSize = 13.sp)
                 }
             }
             Spacer(Modifier.height(8.dp))
+            orderLoadError?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
+            if (availableOrders.isEmpty() && orderLoadError == null) {
+                Text("No delivery requests nearby right now.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+            }
 
             availableOrders.forEach { order ->
                 NewTripRequestCard(

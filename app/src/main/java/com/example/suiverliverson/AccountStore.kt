@@ -6,6 +6,17 @@ import com.google.firebase.firestore.FirebaseFirestore
 import org.json.JSONObject
 import java.security.MessageDigest
 
+enum class AccountRole(val value: String, val label: String) {
+    CLIENT("client", "Client"),
+    DRIVER("driver", "Livreur"),
+    COMPANY("company", "Company");
+
+    companion object {
+        fun fromValue(value: String?): AccountRole =
+            entries.firstOrNull { it.value == value?.lowercase() } ?: DRIVER
+    }
+}
+
 data class Account(
     val id: String,
     val firstName: String,
@@ -16,7 +27,9 @@ data class Account(
     val passwordHash: String,
     val imageUri: String? = null,
     val gender: String = "man",
-    val location: String = "Casablanca"
+    val location: String = "Casablanca",
+    val role: AccountRole = AccountRole.DRIVER,
+    val companyName: String = ""
 )
 
 class AccountStore(context: Context) {
@@ -26,7 +39,7 @@ class AccountStore(context: Context) {
         get() = runCatching { FirebaseAuth.getInstance() }.getOrNull()
 
     private val db: FirebaseFirestore?
-        get() = runCatching { FirebaseFirestore.getInstance() }.getOrNull()
+        get() = runCatching { FirebaseFirestore.getInstance(FirebaseFirestoreConfig.DATABASE_ID) }.getOrNull()
 
     private fun hash(password: String): String =
         MessageDigest.getInstance("SHA-256")
@@ -46,6 +59,8 @@ class AccountStore(context: Context) {
         put("imageUri", a.imageUri ?: "")
         put("gender", a.gender)
         put("location", a.location)
+        put("role", a.role.value)
+        put("companyName", a.companyName)
     }.toString()
 
     private fun fromJson(text: String): Account {
@@ -60,9 +75,25 @@ class AccountStore(context: Context) {
             o.getString("passwordHash"),
             if (o.has("imageUri")) o.optString("imageUri").ifEmpty { null } else null,
             o.optString("gender", "man"),
-            o.optString("location", "Casablanca")
+            o.optString("location", "Casablanca"),
+            AccountRole.fromValue(o.optString("role", "driver")),
+            o.optString("companyName", "")
         )
     }
+
+    private fun userDocument(account: Account): Map<String, Any> = mapOf(
+        "id" to account.id,
+        "firstName" to account.firstName,
+        "lastName" to account.lastName,
+        "age" to account.age,
+        "license" to account.license,
+        "login" to account.login,
+        "imageUri" to (account.imageUri ?: ""),
+        "gender" to account.gender,
+        "location" to account.location,
+        "role" to account.role.value,
+        "companyName" to account.companyName
+    )
 
     fun exists(login: String): Boolean = prefs.contains(key(login))
 
@@ -75,7 +106,9 @@ class AccountStore(context: Context) {
         password: String,
         imageUri: String? = null,
         gender: String = "man",
-        location: String = "Casablanca"
+        location: String = "Casablanca",
+        role: AccountRole = AccountRole.DRIVER,
+        companyName: String = ""
     ): Account {
         val account = Account(
             id = "DRV" + (1000..9999).random(),
@@ -83,11 +116,13 @@ class AccountStore(context: Context) {
             lastName = lastName.trim(),
             age = age,
             license = license,
-            login = login.trim(),
+            login = login.trim().lowercase(),
             passwordHash = hash(password),
             imageUri = imageUri,
             gender = gender,
-            location = location.trim()
+            location = location.trim(),
+            role = role,
+            companyName = companyName.trim()
         )
         prefs.edit().putString(key(login), toJson(account)).apply()
         return account
@@ -103,48 +138,68 @@ class AccountStore(context: Context) {
         imageUri: String? = null,
         gender: String = "man",
         location: String = "Casablanca",
+        role: AccountRole = AccountRole.DRIVER,
+        companyName: String = "",
         onResult: (Account?, String?) -> Unit
     ) {
         val firebaseAuth = auth
         if (firebaseAuth == null) {
-            val localAccount = register(firstName, lastName, age, license, login, password, imageUri, gender, location)
+            val localAccount = register(
+                firstName, lastName, age, license, login, password,
+                imageUri, gender, location, role, companyName
+            )
             setCurrent(localAccount)
             onResult(localAccount, null)
             return
         }
 
-        firebaseAuth.createUserWithEmailAndPassword(login.trim(), password)
+        firebaseAuth.createUserWithEmailAndPassword(login.trim().lowercase(), password)
             .addOnSuccessListener { authResult ->
-                val uid = authResult.user?.uid ?: ("DRV" + (1000..9999).random())
+                val user = authResult.user
+                if (user == null) {
+                    onResult(null, "Firebase did not return the new account")
+                    return@addOnSuccessListener
+                }
+
                 val account = Account(
-                    id = uid,
+                    id = user.uid,
                     firstName = firstName.trim(),
                     lastName = lastName.trim(),
                     age = age,
                     license = license,
-                    login = login.trim(),
+                    login = login.trim().lowercase(),
                     passwordHash = hash(password),
                     imageUri = imageUri,
                     gender = gender,
-                    location = location.trim()
+                    location = location.trim(),
+                    role = role,
+                    companyName = companyName.trim()
                 )
+                val firestore = db
+                if (firestore == null) {
+                    user.delete().addOnCompleteListener {
+                        logout()
+                        onResult(null, "Firebase profile database is unavailable")
+                    }
+                    return@addOnSuccessListener
+                }
 
-                val userMap = mapOf(
-                    "id" to account.id,
-                    "firstName" to account.firstName,
-                    "lastName" to account.lastName,
-                    "age" to account.age,
-                    "license" to account.license,
-                    "login" to account.login,
-                    "imageUri" to (account.imageUri ?: ""),
-                    "gender" to account.gender,
-                    "location" to account.location
-                )
-                db?.collection("users")?.document(uid)?.set(userMap)
-
-                prefs.edit().putString(key(login), toJson(account)).apply()
-                setCurrent(account)
-                onResult(account, null)
+                firestore.collection("users").document(user.uid)
+                    .set(userDocument(account))
+                    .addOnSuccessListener {
+                        prefs.edit().putString(key(login), toJson(account)).apply()
+                        setCurrent(account)
+                        onResult(account, null)
+                    }
+                    .addOnFailureListener { exception ->
+                        user.delete().addOnCompleteListener {
+                            logout()
+                            onResult(
+                                null,
+                                exception.localizedMessage ?: "Could not save the account profile"
+                            )
+                        }
+                    }
             }
             .addOnFailureListener { exception ->
                 onResult(null, exception.localizedMessage ?: "Failed to create account")
@@ -156,18 +211,7 @@ class AccountStore(context: Context) {
         setCurrent(account)
 
         val uid = auth?.currentUser?.uid ?: account.id
-        val userMap = mapOf(
-            "id" to account.id,
-            "firstName" to account.firstName,
-            "lastName" to account.lastName,
-            "age" to account.age,
-            "license" to account.license,
-            "login" to account.login,
-            "imageUri" to (account.imageUri ?: ""),
-            "gender" to account.gender,
-            "location" to account.location
-        )
-        db?.collection("users")?.document(uid)?.set(userMap)
+        db?.collection("users")?.document(uid)?.set(userDocument(account))
     }
 
     fun authenticate(login: String, password: String): Account? {
@@ -179,61 +223,86 @@ class AccountStore(context: Context) {
     fun authenticateWithFirebase(
         login: String,
         password: String,
+        expectedRole: AccountRole? = null,
         onResult: (Account?, String?) -> Unit
     ) {
         val firebaseAuth = auth
         if (firebaseAuth == null) {
             val account = authenticate(login, password)
-            if (account != null) {
+            if (account == null) {
+                onResult(null, "Firebase Authentication is unavailable")
+            } else if (expectedRole != null && account.role != expectedRole) {
+                onResult(null, "This account is registered as ${account.role.label}")
+            } else {
                 setCurrent(account)
                 onResult(account, null)
-            } else {
-                onResult(null, "Account not found")
             }
             return
         }
 
-        firebaseAuth.signInWithEmailAndPassword(login.trim(), password)
+        firebaseAuth.signInWithEmailAndPassword(login.trim().lowercase(), password)
             .addOnSuccessListener { authResult ->
-                val uid = authResult.user?.uid ?: ""
-                db?.collection("users")?.document(uid)?.get()
-                    ?.addOnSuccessListener { doc ->
-                        if (doc.exists()) {
-                            val account = Account(
+                val uid = authResult.user?.uid
+                val firestore = db
+                if (uid == null || firestore == null) {
+                    logout()
+                    onResult(null, "Could not load the Firebase account profile")
+                    return@addOnSuccessListener
+                }
+
+                firestore.collection("users").document(uid).get()
+                    .addOnSuccessListener { doc ->
+                        val account = if (doc.exists()) {
+                            Account(
                                 id = doc.getString("id") ?: uid,
                                 firstName = doc.getString("firstName") ?: "",
                                 lastName = doc.getString("lastName") ?: "",
-                                age = doc.getLong("age")?.toInt() ?: 25,
-                                license = doc.getString("license") ?: "B",
+                                age = doc.getLong("age")?.toInt() ?: 0,
+                                license = doc.getString("license") ?: "",
                                 login = doc.getString("login") ?: login.trim(),
                                 passwordHash = hash(password),
                                 imageUri = doc.getString("imageUri")?.ifEmpty { null },
                                 gender = doc.getString("gender") ?: "man",
-                                location = doc.getString("location") ?: "Casablanca"
+                                location = doc.getString("location") ?: "Casablanca",
+                                role = AccountRole.fromValue(doc.getString("role")),
+                                companyName = doc.getString("companyName") ?: ""
                             )
-                            prefs.edit().putString(key(login), toJson(account)).apply()
-                            setCurrent(account)
-                            onResult(account, null)
                         } else {
-                            val local = authenticate(login, password)
-                            if (local != null) setCurrent(local)
-                            onResult(local, null)
+                            authenticate(login, password)?.copy(id = uid, role = AccountRole.DRIVER)
+                        }
+
+                        if (account == null) {
+                            logout()
+                            onResult(null, "This Firebase account has no profile yet")
+                        } else if (expectedRole != null && account.role != expectedRole) {
+                            logout()
+                            onResult(null, "This account is registered as ${account.role.label}")
+                        } else {
+                            val finishLogin: (Account) -> Unit = { resolvedAccount ->
+                                prefs.edit().putString(key(login), toJson(resolvedAccount)).apply()
+                                setCurrent(resolvedAccount)
+                                onResult(resolvedAccount, null)
+                            }
+                            if (doc.exists()) {
+                                finishLogin(account)
+                            } else {
+                                firestore.collection("users").document(uid)
+                                    .set(userDocument(account))
+                                    .addOnSuccessListener { finishLogin(account) }
+                                    .addOnFailureListener {
+                                        logout()
+                                        onResult(null, "Could not save the Firebase account profile")
+                                    }
+                            }
                         }
                     }
-                    ?.addOnFailureListener {
-                        val local = authenticate(login, password)
-                        if (local != null) setCurrent(local)
-                        onResult(local, null)
+                    .addOnFailureListener { exception ->
+                        logout()
+                        onResult(null, exception.localizedMessage ?: "Could not load the account profile")
                     }
             }
             .addOnFailureListener { exception ->
-                val local = authenticate(login, password)
-                if (local != null) {
-                    setCurrent(local)
-                    onResult(local, null)
-                } else {
-                    onResult(null, exception.localizedMessage ?: "Invalid credentials")
-                }
+                onResult(null, exception.localizedMessage ?: "Invalid credentials")
             }
     }
 

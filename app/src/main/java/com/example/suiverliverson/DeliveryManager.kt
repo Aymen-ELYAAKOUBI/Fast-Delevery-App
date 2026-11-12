@@ -37,7 +37,7 @@ data class CompletedOrder(
 
 class DeliveryManager {
     private val db: FirebaseFirestore?
-        get() = runCatching { FirebaseFirestore.getInstance() }.getOrNull()
+        get() = runCatching { FirebaseFirestore.getInstance(FirebaseFirestoreConfig.DATABASE_ID) }.getOrNull()
 
     private val auth: FirebaseAuth?
         get() = runCatching { FirebaseAuth.getInstance() }.getOrNull()
@@ -107,20 +107,27 @@ class DeliveryManager {
     fun acceptOrder(order: Order) {
         if (currentActiveOrder != null && deliveryStage != DeliveryStage.DELIVERED) return
 
-        currentActiveOrder = order
-        activeRouteStartPoint = casablancaDriverStartPoints.random()
-        activeRoadRoute = emptyList()
-        routeProgress = 0f
-        pickupRouteProgress = 0.5f
-        deliveryStage = DeliveryStage.PICKUP_EN_ROUTE
-        notificationsList.add(0, AppNotification("#N${(100..999).random()}", "Nouveau commande accepté !", "Commande ${order.id} pour ${order.customerName}"))
+        OrderRepository().claim(order.id) { accepted, message ->
+            if (!accepted) {
+                notificationsList.add(0, AppNotification("#N${(100..999).random()}", "Request unavailable", message ?: "Another driver accepted this request"))
+                return@claim
+            }
+            currentActiveOrder = order
+            activeRouteStartPoint = casablancaDriverStartPoints.random()
+            activeRoadRoute = emptyList()
+            routeProgress = 0f
+            pickupRouteProgress = 0.5f
+            deliveryStage = DeliveryStage.PICKUP_EN_ROUTE
+            notificationsList.add(0, AppNotification("#N${(100..999).random()}", "Delivery accepted", "Request ${order.id} for ${order.customerName}"))
+        }
     }
 
     fun completePickup() {
         if (deliveryStage != DeliveryStage.PICKUP_EN_ROUTE) return
 
-        deliveryStage = DeliveryStage.ORDER_PICKED_UP
         val order = currentActiveOrder
+        if (order != null) OrderRepository().updateStatus(order.id, "picked_up")
+        deliveryStage = DeliveryStage.ORDER_PICKED_UP
         notificationsList.add(0, AppNotification("#N${(100..999).random()}", "Commande récupérée !", "الطلب ${order?.id ?: ""} تم استلامه من ${order?.pickup ?: ""}"))
     }
 
@@ -128,6 +135,7 @@ class DeliveryManager {
         if (deliveryStage != DeliveryStage.ORDER_PICKED_UP) return
 
         val order = currentActiveOrder ?: return
+        OrderRepository().updateStatus(order.id, "delivered")
         totalEarnings += order.price
         completedTrips += 1
         deliveryStage = DeliveryStage.DELIVERED

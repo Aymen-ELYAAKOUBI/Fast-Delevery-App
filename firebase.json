@@ -1,0 +1,8 @@
+{
+  "firestore": [
+    {
+      "database": "fast-delivery-app",
+      "rules": "firestore.rules"
+    }
+  ]
+}

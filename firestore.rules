@@ -1,0 +1,191 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownsUser(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function roleIs(role) {
+      return signedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+
+    function validUser(data, userId) {
+      return data.keys().hasAll([
+          'id', 'firstName', 'lastName', 'age', 'license', 'login',
+          'imageUri', 'gender', 'location', 'role', 'companyName'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'firstName', 'lastName', 'age', 'license', 'login',
+          'imageUri', 'gender', 'location', 'role', 'companyName'
+        ]) &&
+        data.id is string && data.id == userId &&
+        data.firstName is string && data.firstName.size() > 0 &&
+          data.firstName.size() <= 50 &&
+        data.lastName is string && data.lastName.size() > 0 &&
+          data.lastName.size() <= 50 &&
+        data.age is int && data.age >= 0 && data.age <= 120 &&
+        data.license is string && data.license.size() <= 1 &&
+        data.login is string && data.login.size() > 3 &&
+          data.login.size() <= 254 &&
+          data.login == request.auth.token.email &&
+        data.imageUri is string && data.imageUri.size() <= 2048 &&
+        data.gender is string && data.gender in ['man', 'woman'] &&
+        data.location is string && data.location.size() > 0 &&
+          data.location.size() <= 100 &&
+        data.role is string && data.role in ['client', 'driver', 'company'] &&
+        data.companyName is string && data.companyName.size() <= 100 &&
+        (
+          (data.role == 'driver' &&
+            data.age >= 18 && data.age <= 70 &&
+            data.license in ['A', 'B', 'C', 'D']) ||
+          (data.role == 'client' &&
+            data.age == 0 && data.license == '' &&
+            data.companyName == '') ||
+          (data.role == 'company' &&
+            data.age == 0 && data.license == '' &&
+            data.companyName.size() > 0)
+        );
+    }
+
+    function validCompletedOrder(data, orderId) {
+      return data.keys().hasAll([
+          'id', 'customerName', 'price', 'distanceKm', 'pickup',
+          'delivery', 'completedAt', 'timestamp'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'customerName', 'price', 'distanceKm', 'pickup',
+          'delivery', 'completedAt', 'timestamp'
+        ]) &&
+        data.id is string && data.id == orderId && data.id.size() <= 100 &&
+        data.customerName is string && data.customerName.size() <= 100 &&
+        data.price is number && data.price >= 0 && data.price <= 1000000 &&
+        data.distanceKm is number && data.distanceKm >= 0 &&
+          data.distanceKm <= 10000 &&
+        data.pickup is string && data.pickup.size() <= 200 &&
+        data.delivery is string && data.delivery.size() <= 200 &&
+        data.completedAt is string && data.completedAt.size() <= 100 &&
+        data.timestamp is int && data.timestamp > 0;
+    }
+
+    function validDeliveryRequest(data) {
+      return data.keys().hasAll([
+          'ownerUid', 'ownerRole', 'customerName', 'pickup', 'delivery',
+          'recipientName', 'recipientPhone', 'packageDescription', 'status',
+          'driverUid', 'price', 'distanceKm', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerUid', 'ownerRole', 'customerName', 'pickup', 'delivery',
+          'recipientName', 'recipientPhone', 'packageDescription', 'status',
+          'driverUid', 'price', 'distanceKm', 'createdAt', 'updatedAt'
+        ]) &&
+        data.ownerUid is string &&
+        data.ownerRole in ['client', 'company'] &&
+        data.customerName is string && data.customerName.size() > 0 &&
+          data.customerName.size() <= 100 &&
+        data.pickup is string && data.pickup.size() > 0 && data.pickup.size() <= 300 &&
+        data.delivery is string && data.delivery.size() > 0 && data.delivery.size() <= 300 &&
+        data.recipientName is string && data.recipientName.size() > 0 && data.recipientName.size() <= 100 &&
+        data.recipientPhone is string && data.recipientPhone.size() > 5 && data.recipientPhone.size() <= 30 &&
+        data.packageDescription is string && data.packageDescription.size() <= 500 &&
+        data.status in ['requested', 'accepted', 'picked_up', 'delivered', 'cancelled'] &&
+        data.driverUid is string && data.driverUid.size() <= 128 &&
+        data.price is number && data.price >= 0 && data.price <= 100000 &&
+        data.distanceKm is number && data.distanceKm >= 0 && data.distanceKm <= 1000 &&
+        data.createdAt is timestamp;
+    }
+
+    match /users/{userId} {
+      // Profiles contain private information. Only the account owner can read them.
+      allow get, list: if ownsUser(userId);
+      allow create: if ownsUser(userId) && validUser(request.resource.data, userId);
+      allow update: if ownsUser(userId) &&
+        validUser(request.resource.data, userId) &&
+        request.resource.data.id == resource.data.id &&
+        request.resource.data.role == resource.data.get('role', 'driver');
+      allow delete: if false;
+
+      match /completed_orders/{orderId} {
+        allow read: if ownsUser(userId) && roleIs('driver');
+        allow create: if ownsUser(userId) && roleIs('driver') &&
+          validCompletedOrder(request.resource.data, orderId);
+        allow update: if ownsUser(userId) && roleIs('driver') &&
+          validCompletedOrder(request.resource.data, orderId) &&
+          request.resource.data.id == resource.data.id;
+        allow delete: if false;
+      }
+    }
+
+    match /orders/{orderId} {
+      allow create: if signedIn() &&
+        request.resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.ownerRole in ['client', 'company'] &&
+        roleIs(request.resource.data.ownerRole) &&
+        request.resource.data.status == 'requested' &&
+        request.resource.data.driverUid == '' &&
+        request.resource.data.createdAt == request.time &&
+        validDeliveryRequest(request.resource.data);
+
+      allow get, list: if signedIn() &&
+        (
+          resource.data.ownerUid == request.auth.uid ||
+          (
+            roleIs('driver') &&
+            (resource.data.status == 'requested' ||
+              resource.data.driverUid == request.auth.uid)
+          )
+        );
+
+      allow update: if signedIn() && validDeliveryRequest(request.resource.data) &&
+        request.resource.data.ownerUid == resource.data.ownerUid &&
+        request.resource.data.ownerRole == resource.data.ownerRole &&
+        request.resource.data.customerName == resource.data.customerName &&
+        request.resource.data.pickup == resource.data.pickup &&
+        request.resource.data.delivery == resource.data.delivery &&
+        request.resource.data.recipientName == resource.data.recipientName &&
+        request.resource.data.recipientPhone == resource.data.recipientPhone &&
+        request.resource.data.packageDescription == resource.data.packageDescription &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.updatedAt == request.time &&
+        (
+          (
+            resource.data.ownerUid == request.auth.uid &&
+            resource.data.status == 'requested' &&
+            request.resource.data.status == 'cancelled' &&
+            request.resource.data.driverUid == ''
+          ) ||
+          (
+            roleIs('driver') &&
+            resource.data.status == 'requested' &&
+            request.resource.data.status == 'accepted' &&
+            request.resource.data.driverUid == request.auth.uid
+          ) ||
+          (
+            roleIs('driver') &&
+            resource.data.driverUid == request.auth.uid &&
+            resource.data.status == 'accepted' &&
+            request.resource.data.status == 'picked_up' &&
+            request.resource.data.driverUid == resource.data.driverUid
+          ) ||
+          (
+            roleIs('driver') &&
+            resource.data.driverUid == request.auth.uid &&
+            resource.data.status == 'picked_up' &&
+            request.resource.data.status == 'delivered' &&
+            request.resource.data.driverUid == resource.data.driverUid
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "180915217089",
+    "project_id": "fast-delivery-app-4f971",
+    "storage_bucket": "fast-delivery-app-4f971.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:180915217089:android:2ee32dbfa357a0f51fea40",
+        "android_client_info": {
+          "package_name": "com.example.suiverliverson"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDW0fre-RRF2zoJS7d7gSwzliuH8lLP2u8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

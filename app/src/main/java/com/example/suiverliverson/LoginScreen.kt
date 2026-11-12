@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,13 +61,14 @@ import com.example.suiverliverson.ui.theme.White
 fun LoginScreen(
     store: AccountStore,
     onLogin: () -> Unit,
-    onCreateAccount: () -> Unit,
+    onCreateAccount: (AccountRole) -> Unit,
     onForgotPassword: () -> Unit
 ) {
     val s = LocalStrings.current
     val darkMode = LocalDarkMode.current
     val setDarkMode = LocalSetDarkMode.current
     val foreground = MaterialTheme.colorScheme.onBackground
+    var selectedRole by remember { mutableStateOf(AccountRole.DRIVER) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
@@ -103,12 +106,27 @@ fun LoginScreen(
             Spacer(Modifier.height(8.dp))
             LiversonLogo(iconSize = 150.dp, textSize = 34.sp)
             Spacer(Modifier.height(12.dp))
-            Text(s.driverLogin, color = foreground, fontSize = 20.sp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                AccountRole.entries.forEach { role ->
+                    FilterChip(
+                        selected = selectedRole == role,
+                        onClick = { selectedRole = role; error = null },
+                        label = { Text(role.label) }
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Text("${selectedRole.label} · ${s.login}", color = foreground, fontSize = 20.sp)
             Spacer(Modifier.height(28.dp))
 
             OutlinedTextField(
                 value = email,
-                onValueChange = { email = it; error = null },
+                onValueChange = { email = it.trim().lowercase(); error = null },
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text(s.emailPhone, color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 leadingIcon = { Icon(Icons.Default.Email, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
@@ -154,7 +172,7 @@ fun LoginScreen(
                         error = s.fillAllFields
                     } else {
                         isLoading = true
-                        store.authenticateWithFirebase(email, password) { account, err ->
+                        store.authenticateWithFirebase(email, password, selectedRole) { account, err ->
                             isLoading = false
                             if (account != null) {
                                 onLogin()
@@ -216,7 +234,7 @@ fun LoginScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(s.noAccount, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
-                TextButton(onClick = onCreateAccount) {
+                TextButton(onClick = { onCreateAccount(selectedRole) }) {
                     Text(s.createAccount, color = Red, fontWeight = FontWeight.Bold)
                 }
             }

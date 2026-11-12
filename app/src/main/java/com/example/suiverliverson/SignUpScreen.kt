@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -73,9 +74,11 @@ fun appFieldColors() = OutlinedTextFieldDefaults.colors(
 )
 
 @Composable
-fun SignUpScreen(store: AccountStore, onBack: () -> Unit, onSuccess: () -> Unit) {
+fun SignUpScreen(store: AccountStore, initialRole: AccountRole, onBack: () -> Unit, onSuccess: () -> Unit) {
     val s = LocalStrings.current
     val context = LocalContext.current
+    var selectedRole by remember(initialRole) { mutableStateOf(initialRole) }
+    var companyName by remember { mutableStateOf("") }
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
     var age by remember { mutableStateOf("") }
@@ -118,65 +121,82 @@ fun SignUpScreen(store: AccountStore, onBack: () -> Unit, onSuccess: () -> Unit)
             )
         }
         Spacer(Modifier.height(16.dp))
-
-        Text("Gender / الجنس", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
-        Spacer(Modifier.height(8.dp))
+        Text("Account type / نوع الحساب", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
         Row(
-            modifier = Modifier.align(Alignment.CenterHorizontally),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            FilterChip(
-                selected = gender == "man",
-                onClick = { gender = "man" },
-                label = { Text("Man / رجل") }
-            )
-            FilterChip(
-                selected = gender == "woman",
-                onClick = { gender = "woman" },
-                label = { Text("Woman / امرأة") }
-            )
+            AccountRole.entries.forEach { role ->
+                FilterChip(
+                    selected = selectedRole == role,
+                    onClick = { selectedRole = role; error = null },
+                    label = { Text(role.label) }
+                )
+            }
         }
         Spacer(Modifier.height(12.dp))
 
-        // اختيار الصورة الشخصية
-        Box(
-            modifier = Modifier
-                .size(90.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .border(2.dp, Red, CircleShape)
-                .clickable { photoLauncher.launch("image/*") }
-                .align(Alignment.CenterHorizontally),
-            contentAlignment = Alignment.Center
-        ) {
-            if (imageUri != null) {
-                val bitmap = remember(imageUri) {
-                    try {
-                        context.contentResolver.openInputStream(imageUri!!).use {
-                            BitmapFactory.decodeStream(it)
+        if (selectedRole == AccountRole.DRIVER) {
+            Text("Gender / الجنس", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                FilterChip(
+                    selected = gender == "man",
+                    onClick = { gender = "man" },
+                    label = { Text("Man / رجل") }
+                )
+                FilterChip(
+                    selected = gender == "woman",
+                    onClick = { gender = "woman" },
+                    label = { Text("Woman / امرأة") }
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+
+            Box(
+                modifier = Modifier
+                    .size(90.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(2.dp, Red, CircleShape)
+                    .clickable { photoLauncher.launch("image/*") }
+                    .align(Alignment.CenterHorizontally),
+                contentAlignment = Alignment.Center
+            ) {
+                if (imageUri != null) {
+                    val bitmap = remember(imageUri) {
+                        try {
+                            context.contentResolver.openInputStream(imageUri!!).use {
+                                BitmapFactory.decodeStream(it)
+                            }
+                        } catch (e: Exception) {
+                            null
                         }
-                    } catch (e: Exception) {
-                        null
                     }
-                }
-                if (bitmap != null) {
+                    if (bitmap != null) {
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                } else {
                     Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = null,
+                        painter = painterResource(if (gender == "woman") R.drawable.woman_avatar else R.drawable.man_avatar),
+                        contentDescription = "${gender} avatar",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
                 }
-            } else {
-                Image(
-                    painter = painterResource(if (gender == "woman") R.drawable.woman_avatar else R.drawable.man_avatar),
-                    contentDescription = "${gender} avatar",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
             }
+            Spacer(Modifier.height(20.dp))
         }
-        Spacer(Modifier.height(20.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(
@@ -200,46 +220,69 @@ fun SignUpScreen(store: AccountStore, onBack: () -> Unit, onSuccess: () -> Unit)
         }
         Spacer(Modifier.height(14.dp))
 
-        OutlinedTextField(
-            value = age,
-            onValueChange = { if (it.length <= 2 && it.all { c -> c.isDigit() }) age = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(s.age, color = MaterialTheme.colorScheme.onSurfaceVariant) },
-            leadingIcon = { Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-            singleLine = true,
-            shape = shape,
-            colors = colors,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
-        Spacer(Modifier.height(14.dp))
+        if (selectedRole == AccountRole.COMPANY) {
+            OutlinedTextField(
+                value = companyName,
+                onValueChange = { companyName = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Company name / اسم الشركة", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                singleLine = true,
+                shape = shape,
+                colors = colors
+            )
+            Spacer(Modifier.height(14.dp))
+        }
+
+        if (selectedRole == AccountRole.DRIVER) {
+            OutlinedTextField(
+                value = age,
+                onValueChange = { if (it.length <= 2 && it.all { c -> c.isDigit() }) age = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text(s.age, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                leadingIcon = { Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                singleLine = true,
+                shape = shape,
+                colors = colors,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+            Spacer(Modifier.height(14.dp))
+        }
 
         OutlinedTextField(
             value = location,
             onValueChange = { location = it },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Location / المدينة", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            placeholder = {
+                Text(
+                    if (selectedRole == AccountRole.COMPANY) "Company location / المدينة"
+                    else "Location / المدينة",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
             singleLine = true,
             shape = shape,
             colors = colors
         )
         Spacer(Modifier.height(14.dp))
 
-        Text(s.licenseType, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("A", "B", "C", "D").forEach { type ->
-                FilterChip(
-                    selected = license == type,
-                    onClick = { license = type },
-                    label = { Text(type) }
-                )
+        if (selectedRole == AccountRole.DRIVER) {
+            Text(s.licenseType, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("A", "B", "C", "D").forEach { type ->
+                    FilterChip(
+                        selected = license == type,
+                        onClick = { license = type },
+                        label = { Text(type) }
+                    )
+                }
             }
+            Spacer(Modifier.height(14.dp))
         }
-        Spacer(Modifier.height(14.dp))
 
         OutlinedTextField(
             value = login,
-            onValueChange = { login = it },
+            onValueChange = { login = it.trim().lowercase() },
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text(s.emailPhone, color = MaterialTheme.colorScheme.onSurfaceVariant) },
             leadingIcon = { Icon(Icons.Default.Email, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
@@ -299,19 +342,31 @@ fun SignUpScreen(store: AccountStore, onBack: () -> Unit, onSuccess: () -> Unit)
             onClick = {
                 val ageInt = age.toIntOrNull()
                 error = when {
-                    firstName.isBlank() || lastName.isBlank() || age.isBlank() || location.isBlank() ||
-                            login.isBlank() || password.isBlank() || confirm.isBlank() ->
+                    firstName.isBlank() || lastName.isBlank() || location.isBlank() ||
+                            login.isBlank() || password.isBlank() || confirm.isBlank() ||
+                            (selectedRole == AccountRole.COMPANY && companyName.isBlank()) ->
                         s.fillAllFields
-                    ageInt == null || ageInt !in 18..70 -> s.invalidAge
+                    selectedRole == AccountRole.DRIVER && (ageInt == null || ageInt !in 18..70) ->
+                        s.invalidAge
                     password.length < 6 -> s.passwordShort
                     password != confirm -> s.passwordMismatch
                     store.exists(login) -> s.accountExists
                     else -> null
                 }
-                if (error == null && ageInt != null) {
+                if (error == null) {
                     isLoading = true
                     store.registerWithFirebase(
-                        firstName, lastName, ageInt, license, login, password, imageUri?.toString(), gender, location
+                        firstName = firstName,
+                        lastName = lastName,
+                        age = if (selectedRole == AccountRole.DRIVER) ageInt ?: 0 else 0,
+                        license = if (selectedRole == AccountRole.DRIVER) license else "",
+                        login = login,
+                        password = password,
+                        imageUri = imageUri?.toString(),
+                        gender = gender,
+                        location = location,
+                        role = selectedRole,
+                        companyName = companyName
                     ) { account, err ->
                         isLoading = false
                         if (account != null) {

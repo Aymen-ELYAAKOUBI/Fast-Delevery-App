@@ -21,8 +21,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -52,17 +53,26 @@ fun AppNav() {
     val context = LocalContext.current
     val store = remember { AccountStore(context) }
     val deliveryManager = remember { DeliveryManager() }
+    var currentAccount by remember { mutableStateOf(store.current()) }
+    var signupRole by remember { mutableStateOf(AccountRole.DRIVER) }
+
+    fun destinationFor(account: Account?): String = when (account?.role) {
+        AccountRole.CLIENT -> "clientHome"
+        AccountRole.COMPANY -> "companyHome"
+        else -> Tab.HOME.route
+    }
 
     val entry by nav.currentBackStackEntryAsState()
     val current = entry?.destination?.route
-    val showBar = Tab.values().any { it.route == current }
+    val showBar = currentAccount?.role == AccountRole.DRIVER &&
+            Tab.entries.any { it.route == current }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (showBar) {
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                    Tab.values().forEach { tab ->
+                    Tab.entries.forEach { tab ->
                         NavigationBarItem(
                             selected = current == tab.route,
                             onClick = {
@@ -91,26 +101,39 @@ fun AppNav() {
         ) {
             composable("splash") {
                 SplashScreen {
-                    val startDest = if (store.current() != null) "home" else "login"
-                    nav.navigate(startDest) { popUpTo("splash") { inclusive = true } }
+                    val account = store.current()
+                    currentAccount = account
+                    nav.navigate(if (account == null) "login" else destinationFor(account)) {
+                        popUpTo("splash") { inclusive = true }
+                    }
                 }
             }
             composable("login") {
                 LoginScreen(
                     store = store,
                     onLogin = {
-                        nav.navigate("home") { popUpTo("login") { inclusive = true } }
+                        currentAccount = store.current()
+                        nav.navigate(destinationFor(currentAccount)) {
+                            popUpTo("login") { inclusive = true }
+                        }
                     },
-                    onCreateAccount = { nav.navigate("signup") },
+                    onCreateAccount = { role ->
+                        signupRole = role
+                        nav.navigate("signup")
+                    },
                     onForgotPassword = { nav.navigate("forgot") }
                 )
             }
             composable("signup") {
                 SignUpScreen(
                     store = store,
+                    initialRole = signupRole,
                     onBack = { nav.popBackStack() },
                     onSuccess = {
-                        nav.navigate("home") { popUpTo("login") { inclusive = true } }
+                        currentAccount = store.current()
+                        nav.navigate(destinationFor(currentAccount)) {
+                            popUpTo("login") { inclusive = true }
+                        }
                     }
                 )
             }
@@ -148,9 +171,38 @@ fun AppNav() {
                     onNavigateToHistory = { nav.navigate("history") },
                     onLogout = {
                         store.logout()
-                        nav.navigate("login") { popUpTo("home") { inclusive = true } }
+                        currentAccount = null
+                        nav.navigate("login") { popUpTo(Tab.HOME.route) { inclusive = true } }
                     }
                 )
+            }
+            composable("clientHome") {
+                currentAccount?.let { account ->
+                    RoleHomeScreen(
+                        account = account,
+                        onLogout = {
+                            store.logout()
+                            currentAccount = null
+                            nav.navigate("login") {
+                                popUpTo("clientHome") { inclusive = true }
+                            }
+                        }
+                    )
+                }
+            }
+            composable("companyHome") {
+                currentAccount?.let { account ->
+                    RoleHomeScreen(
+                        account = account,
+                        onLogout = {
+                            store.logout()
+                            currentAccount = null
+                            nav.navigate("login") {
+                                popUpTo("companyHome") { inclusive = true }
+                            }
+                        }
+                    )
+                }
             }
             composable("notifications") {
                 NotificationsScreen(
@@ -164,7 +216,6 @@ fun AppNav() {
                     onBack = { nav.popBackStack() }
                 )
             }
-            // صفحة السجل الكاملة المستقلة
             composable("history") {
                 HistoryScreen(
                     deliveryManager = deliveryManager,

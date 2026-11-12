@@ -3,11 +3,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.google.services) apply false
-}
-
-if (file("google-services.json").exists() || file("src/google-services.json").exists()) {
-    apply(plugin = "com.google.gms.google-services")
+    alias(libs.plugins.google.services)
 }
 
 val localProperties = Properties().apply {
@@ -75,6 +71,6 @@ dependencies {
     implementation("com.google.zxing:core:3.5.3")
 
     implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth.ktx)
-    implementation(libs.firebase.firestore.ktx)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
 }
