@@ -1,90 +1,130 @@
 # Fast Delivery App
 
-**Fast Delivery App** est une application Android complète pour la gestion et le suivi de livraisons en temps réel avec Firebase. Elle propose une interface dédiée aux livreurs, avec des commandes, des itinéraires sur carte, l’authentification Firebase et la synchronisation des données sur Cloud Firestore.
+Application Android de livraison construite avec Kotlin et Jetpack Compose. Le projet propose des parcours distincts pour les clients, les livreurs et les entreprises, avec Firebase Authentication et Cloud Firestore.
 
-> Le projet est en cours de développement. Les données de commandes et de statistiques sont actuellement générées localement pour la démonstration. L’intégration Firebase est prévue/en cours et n’est pas encore configurée dans cette version.
+> **État : MVP en développement.** La connexion Firebase et la lecture du tableau de bord ont été vérifiées sur un appareil. Le cycle complet d’une commande (création, acceptation par un livreur, collecte et livraison) doit encore être validé avec deux comptes de test. Les tarifs, distances et certaines étapes de carte restent des valeurs de démonstration : ne pas utiliser pour une activité commerciale réelle.
 
 ## Fonctionnalités
 
-- Création de compte, connexion et récupération de mot de passe avec stockage local.
-- Tableau de bord avec commandes disponibles et commande active.
-- Carte avec points de collecte, destination et itinéraire routier.
-- Historique des livraisons et statistiques.
-- Profil, paramètres, choix de langue et thème sombre.
-- Écrans de notifications et suivi des étapes de livraison.
+### Client
+- Créer un compte et se connecter avec une adresse e-mail et un mot de passe.
+- Envoyer une demande avec les adresses de collecte et de livraison, le nom et le téléphone du destinataire, et une description du colis.
+- Suivre le statut de ses demandes dans une liste mise à jour depuis Firestore.
+
+### Livreur
+- Consulter les demandes en attente dans la file partagée.
+- Accepter une demande; la réservation est effectuée côté Firestore pour éviter qu’elle soit attribuée à plusieurs livreurs.
+- Faire avancer le statut de la commande : en attente, acceptée, récupérée, livrée.
+- Consulter l’interface de carte et l’historique existants.
+
+### Entreprise
+- Créer des demandes de livraison depuis son compte.
+- Consulter les compteurs et les statuts des demandes créées par ce compte.
+
+Chaque compte ne voit que les commandes qu’il possède. Un livreur voit les demandes en attente et celles qui lui sont attribuées. Les comptes entreprise ne disposent pas encore de gestion d’équipe, de vérification d’entreprise ni de rôles administratifs.
 
 ## Technologies
 
-- Kotlin
-- Jetpack Compose et Material 3
+- Kotlin, Jetpack Compose et Material 3
 - Navigation Compose
+- Firebase Authentication (e-mail/mot de passe)
+- Cloud Firestore avec la base nommée `fast-delivery-app`
 - Google Maps SDK et Maps Compose
-- OSRM pour le calcul d’itinéraires, avec Google Routes comme solution de repli
+- OSRM pour les itinéraires, avec Google Routes comme solution de repli configurée dans le projet
 - ZXing Core
 
 ## Prérequis
 
-- Android Studio avec prise en charge de la configuration Gradle du projet.
-- JDK 11 ou version compatible avec Gradle.
+- Android Studio avec le JDK intégré recommandé.
 - Android SDK Platform 37.
-- Une clé API Google Maps avec Maps SDK for Android activé.
+- Une clé Google Maps avec Maps SDK for Android activé.
+- Un appareil ou émulateur Android 10 / API 29 ou ultérieur.
 
-L’application cible Android 15/API 35 ou ultérieur (targetSdk 37) et prend en charge Android 10/API 29 ou ultérieur (minSdk 29).
+Configuration Android du module : `minSdk 29`, `targetSdk 37`.
 
-## Configuration
+## Démarrage
 
-1. Clonez le dépôt et ouvrez-le dans Android Studio :
+1. Clonez le dépôt et ouvrez le projet dans Android Studio :
 
    ```bash
    git clone https://github.com/Aymen-ELYAAKOUBI/Fast-Delevery-App.git
    ```
 
-2. Dans le fichier local.properties à la racine du projet, ajoutez votre propre clé Maps :
+2. Ajoutez votre clé Google Maps dans le fichier `local.properties` à la racine :
 
    ```properties
    MAPS_API_KEY=VOTRE_CLE_API_GOOGLE_MAPS
    ```
 
-   Ce fichier est ignoré par Git. Ne publiez pas votre clé API. Dans Google Cloud, restreignez-la à l’application Android (nom du package et empreinte SHA-1) et aux API nécessaires.
+   `local.properties` est ignoré par Git. Restreignez la clé dans Google Cloud à l’application Android (package et empreinte SHA-1) et aux API nécessaires. Ne mettez pas cette clé dans le dépôt.
 
-3. Synchronisez Gradle, puis lancez l’application sur un appareil ou un émulateur Android 10 ou ultérieur.
+3. Vérifiez que le fichier `app/google-services.json` correspond à votre projet Firebase et au package `com.example.suiverliverson`. Si vous utilisez votre propre projet Firebase, remplacez ce fichier par la configuration Android de ce projet.
 
-Pour générer un APK de débogage depuis Windows :
+4. Synchronisez Gradle dans Android Studio, puis lancez la configuration `app`.
 
-```powershell
-.\gradlew.bat assembleDebug
+Pour construire l’APK de débogage :
+
+- Windows : `gradlew.bat :app:assembleDebug`
+- macOS/Linux : `./gradlew :app:assembleDebug`
+
+## Configuration Firebase
+
+Le projet Firebase utilisé par défaut est `fast-delivery-app-4f971`. La base Firestore nommée est `fast-delivery-app` dans la région `europe-southwest1`.
+
+1. Dans Firebase Console, activez le fournisseur **E-mail/Mot de passe** dans Authentication.
+2. Créez ou sélectionnez la base Firestore nommée `fast-delivery-app`.
+3. Publiez les règles du dépôt (`firestore.rules`) sur **cette base nommée**. Le fichier `firebase.json` associe explicitement ces règles à la base.
+4. Vérifiez dans l’application qu’un compte client ou entreprise peut ouvrir son tableau de bord sans erreur de permission.
+
+Vous pouvez aussi publier les règles avec Firebase CLI après connexion :
+
+```bash
+npx -y firebase-tools@latest deploy --only firestore:rules --project fast-delivery-app-4f971
 ```
 
-## Données et services
+Les règles refusent par défaut les accès non autorisés. Elles permettent au propriétaire de lire ses commandes et limitent les actions du livreur aux demandes en attente ou attribuées à son UID. Toute modification de règles doit être vérifiée avant publication.
 
-Les comptes sont enregistrés localement sur l’appareil avec SharedPreferences. Les commandes de démonstration et certaines statistiques sont générées dans l’application. Cette version ne fournit pas encore de backend partagé entre utilisateurs.
+## Test manuel du parcours de commande
 
-Les itinéraires sont demandés à OSRM. Le code prévoit Google Routes comme solution de repli lorsque la clé Maps configurée le permet. Une connexion Internet est nécessaire pour charger les cartes et les itinéraires.
+Utilisez des comptes de test distincts pour le client (ou l’entreprise) et le livreur :
 
-## Firebase
+1. Connectez-vous avec le compte client/entreprise et créez une demande de test.
+2. Vérifiez que cette demande apparaît dans sa liste avec le statut « en attente ».
+3. Connectez-vous avec un compte livreur et vérifiez que la demande apparaît dans la file.
+4. Acceptez-la, puis avancez les étapes de collecte et de livraison.
+5. Revenez au compte client/entreprise et vérifiez que le statut s’actualise.
+6. Vérifiez qu’un autre compte client ne peut pas lire cette commande.
 
-L’application est intégrée avec **Firebase Authentication** (Email/Password) et **Cloud Firestore** pour la gestion des comptes livreurs et le stockage en temps réel des commandes terminées.
+Ne saisissez pas de vraies adresses ou coordonnées de destinataires lors des essais.
 
-## Structure du projet
+## Limites actuelles
+
+- Le prix est une valeur fixe de démonstration; aucune tarification réelle n’est calculée.
+- Les coordonnées de livraison et les distances ne sont pas calculées à partir des adresses saisies.
+- La carte et la progression du parcours ne constituent pas un suivi GPS temps réel du livreur.
+- Les statistiques du livreur comprennent encore des données de démonstration.
+- Les entreprises ne peuvent pas inviter des employés ou gérer plusieurs utilisateurs.
+- Les règles Firestore n’ont pas encore été vérifiées avec Firebase Emulator Suite.
+
+## Structure principale
 
 ```text
 app/src/main/java/com/example/suiverliverson/
-├── AppNav.kt                 # Navigation entre les écrans
-├── HomeScreen.kt             # Tableau de bord et commandes
-├── MapScreen.kt              # Carte et suivi d’itinéraire
-├── RouteService.kt           # Récupération et traitement des itinéraires
-├── DeliveryManager.kt         # État du parcours de livraison
-├── AccountStore.kt            # Comptes stockés localement
-├── HistoryScreen.kt           # Historique
-├── StatsScreen.kt             # Statistiques
-├── ProfileScreen.kt           # Profil
-├── SettingsScreen.kt          # Paramètres
-└── ...
+├── AppNav.kt                    # Navigation et routage selon le rôle
+├── AccountStore.kt              # Firebase Auth et profils de compte
+├── OrderRepository.kt           # Création, écoute et attribution des demandes
+├── RoleHomeScreen.kt            # Espaces client et entreprise
+├── HomeScreen.kt                # Tableau de bord du livreur et file de demandes
+├── DeliveryManager.kt           # Étapes de livraison et historique du livreur
+├── MapScreen.kt                 # Carte et interface de parcours
+└── RouteService.kt              # Récupération des itinéraires
+firestore.rules                  # Règles de sécurité Firestore
+firebase.json                    # Association règles / base Firestore nommée
 ```
 
 ## Contribution
 
-Les retours et contributions sont les bienvenus. Pour proposer une amélioration, ouvrez une issue ou soumettez une pull request en décrivant le changement.
+Les retours et contributions sont les bienvenus. Ouvrez une issue ou une pull request en décrivant clairement le changement proposé.
 
 ## Auteur
 
