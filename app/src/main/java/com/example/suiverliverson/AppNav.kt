@@ -56,9 +56,12 @@ fun AppNav() {
     var currentAccount by remember { mutableStateOf(store.current()) }
     var signupRole by remember { mutableStateOf(AccountRole.DRIVER) }
 
-    fun destinationFor(account: Account?): String = when (account?.role) {
-        AccountRole.CLIENT -> "clientHome"
-        AccountRole.COMPANY -> "companyHome"
+    fun destinationFor(account: Account?): String = when {
+        account == null -> "login"
+        account.approvalStatus == AccountApprovalStatus.PENDING &&
+            account.role != AccountRole.CLIENT -> "approvalPending"
+        account.role == AccountRole.CLIENT -> "clientHome"
+        account.role == AccountRole.COMPANY -> "companyHome"
         else -> Tab.HOME.route
     }
 
@@ -175,6 +178,20 @@ fun AppNav() {
                         nav.navigate("login") { popUpTo(Tab.HOME.route) { inclusive = true } }
                     }
                 )
+            }
+            composable("approvalPending") {
+                currentAccount?.let { account ->
+                    ApprovalPendingScreen(
+                        account = account,
+                        onLogout = {
+                            store.logout()
+                            currentAccount = null
+                            nav.navigate("login") {
+                                popUpTo("approvalPending") { inclusive = true }
+                            }
+                        }
+                    )
+                }
             }
             composable("clientHome") {
                 currentAccount?.let { account ->

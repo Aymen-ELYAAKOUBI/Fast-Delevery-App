@@ -12,17 +12,18 @@ service cloud.firestore {
 
     function roleIs(role) {
       return signedIn() &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approvalStatus == 'approved';
     }
 
     function validUser(data, userId) {
       return data.keys().hasAll([
           'id', 'firstName', 'lastName', 'age', 'license', 'login',
-          'imageUri', 'gender', 'location', 'role', 'companyName'
+          'imageUri', 'gender', 'location', 'role', 'companyName', 'approvalStatus'
         ]) &&
         data.keys().hasOnly([
           'id', 'firstName', 'lastName', 'age', 'license', 'login',
-          'imageUri', 'gender', 'location', 'role', 'companyName'
+          'imageUri', 'gender', 'location', 'role', 'companyName', 'approvalStatus'
         ]) &&
         data.id is string && data.id == userId &&
         data.firstName is string && data.firstName.size() > 0 &&
@@ -40,6 +41,7 @@ service cloud.firestore {
           data.location.size() <= 100 &&
         data.role is string && data.role in ['client', 'driver', 'company'] &&
         data.companyName is string && data.companyName.size() <= 100 &&
+        data.approvalStatus is string && data.approvalStatus in ['pending', 'approved'] &&
         (
           (data.role == 'driver' &&
             data.age >= 18 && data.age <= 70 &&
@@ -103,11 +105,22 @@ service cloud.firestore {
     match /users/{userId} {
       // Profiles contain private information. Only the account owner can read them.
       allow get, list: if ownsUser(userId);
-      allow create: if ownsUser(userId) && validUser(request.resource.data, userId);
+      allow create: if ownsUser(userId) &&
+        validUser(request.resource.data, userId) &&
+        (
+          (request.resource.data.role == 'client' &&
+            request.resource.data.approvalStatus == 'approved') ||
+          (request.resource.data.role in ['driver', 'company'] &&
+            request.resource.data.approvalStatus == 'pending')
+        );
       allow update: if ownsUser(userId) &&
         validUser(request.resource.data, userId) &&
         request.resource.data.id == resource.data.id &&
-        request.resource.data.role == resource.data.get('role', 'driver');
+        request.resource.data.role == resource.data.get('role', 'driver') &&
+        request.resource.data.approvalStatus == resource.data.get(
+          'approvalStatus',
+          resource.data.get('role', 'driver') == 'client' ? 'approved' : 'pending'
+        );
       allow delete: if false;
 
       match /completed_orders/{orderId} {
@@ -150,6 +163,8 @@ service cloud.firestore {
         request.resource.data.recipientName == resource.data.recipientName &&
         request.resource.data.recipientPhone == resource.data.recipientPhone &&
         request.resource.data.packageDescription == resource.data.packageDescription &&
+        request.resource.data.price == resource.data.price &&
+        request.resource.data.distanceKm == resource.data.distanceKm &&
         request.resource.data.createdAt == resource.data.createdAt &&
         request.resource.data.updatedAt == request.time &&
         (

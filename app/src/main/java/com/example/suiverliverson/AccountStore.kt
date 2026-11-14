@@ -17,6 +17,19 @@ enum class AccountRole(val value: String, val label: String) {
     }
 }
 
+enum class AccountApprovalStatus(val value: String) {
+    PENDING("pending"),
+    APPROVED("approved");
+
+    companion object {
+        fun forRole(role: AccountRole): AccountApprovalStatus =
+            if (role == AccountRole.CLIENT) APPROVED else PENDING
+
+        fun fromValue(value: String?, role: AccountRole): AccountApprovalStatus =
+            entries.firstOrNull { it.value == value?.lowercase() } ?: forRole(role)
+    }
+}
+
 data class Account(
     val id: String,
     val firstName: String,
@@ -29,7 +42,8 @@ data class Account(
     val gender: String = "man",
     val location: String = "Casablanca",
     val role: AccountRole = AccountRole.DRIVER,
-    val companyName: String = ""
+    val companyName: String = "",
+    val approvalStatus: AccountApprovalStatus = AccountApprovalStatus.forRole(role)
 )
 
 class AccountStore(context: Context) {
@@ -61,6 +75,7 @@ class AccountStore(context: Context) {
         put("location", a.location)
         put("role", a.role.value)
         put("companyName", a.companyName)
+        put("approvalStatus", a.approvalStatus.value)
     }.toString()
 
     private fun fromJson(text: String): Account {
@@ -77,7 +92,11 @@ class AccountStore(context: Context) {
             o.optString("gender", "man"),
             o.optString("location", "Casablanca"),
             AccountRole.fromValue(o.optString("role", "driver")),
-            o.optString("companyName", "")
+            o.optString("companyName", ""),
+            AccountApprovalStatus.fromValue(
+                o.optString("approvalStatus").ifEmpty { null },
+                AccountRole.fromValue(o.optString("role", "driver"))
+            )
         )
     }
 
@@ -92,7 +111,8 @@ class AccountStore(context: Context) {
         "gender" to account.gender,
         "location" to account.location,
         "role" to account.role.value,
-        "companyName" to account.companyName
+        "companyName" to account.companyName,
+        "approvalStatus" to account.approvalStatus.value
     )
 
     fun exists(login: String): Boolean = prefs.contains(key(login))
@@ -265,10 +285,18 @@ class AccountStore(context: Context) {
                                 gender = doc.getString("gender") ?: "man",
                                 location = doc.getString("location") ?: "Casablanca",
                                 role = AccountRole.fromValue(doc.getString("role")),
-                                companyName = doc.getString("companyName") ?: ""
+                                companyName = doc.getString("companyName") ?: "",
+                                approvalStatus = AccountApprovalStatus.fromValue(
+                                    doc.getString("approvalStatus"),
+                                    AccountRole.fromValue(doc.getString("role"))
+                                )
                             )
                         } else {
-                            authenticate(login, password)?.copy(id = uid, role = AccountRole.DRIVER)
+                            authenticate(login, password)?.copy(
+                                id = uid,
+                                role = AccountRole.DRIVER,
+                                approvalStatus = AccountApprovalStatus.PENDING
+                            )
                         }
 
                         if (account == null) {
@@ -283,7 +311,7 @@ class AccountStore(context: Context) {
                                 setCurrent(resolvedAccount)
                                 onResult(resolvedAccount, null)
                             }
-                            if (doc.exists()) {
+                            if (doc.exists() && doc.contains("approvalStatus")) {
                                 finishLogin(account)
                             } else {
                                 firestore.collection("users").document(uid)

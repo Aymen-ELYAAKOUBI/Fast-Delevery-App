@@ -160,6 +160,40 @@ fun RoleHomeScreen(account: Account, onLogout: () -> Unit) {
 }
 
 @Composable
+fun ApprovalPendingScreen(account: Account, onLogout: () -> Unit) {
+    val displayName = if (account.role == AccountRole.COMPANY && account.companyName.isNotBlank()) {
+        account.companyName
+    } else {
+        "${account.firstName} ${account.lastName}".trim()
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Account review", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            IconButton(onClick = onLogout) {
+                Icon(Icons.Default.Logout, contentDescription = "Log out", tint = Red)
+            }
+        }
+        Text("Hello, $displayName", fontSize = 18.sp)
+        Text(
+            "Your ${account.role.label.lowercase()} account is waiting for approval. " +
+                "You can use delivery features after the account is approved.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            "After approval, log out and sign in again to refresh your account status.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Button(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
+            Text("Log out")
+        }
+    }
+}
+
+@Composable
 private fun SummaryCard(title: String, value: String, modifier: Modifier = Modifier) {
     Card(modifier, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(16.dp)) {
         Column(Modifier.padding(14.dp)) {

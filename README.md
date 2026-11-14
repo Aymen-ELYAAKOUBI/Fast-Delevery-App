@@ -21,7 +21,7 @@ Application Android de livraison construite avec Kotlin et Jetpack Compose. Le p
 - Créer des demandes de livraison depuis son compte.
 - Consulter les compteurs et les statuts des demandes créées par ce compte.
 
-Chaque compte ne voit que les commandes qu’il possède. Un livreur voit les demandes en attente et celles qui lui sont attribuées. Les comptes entreprise ne disposent pas encore de gestion d’équipe, de vérification d’entreprise ni de rôles administratifs.
+Chaque compte ne voit que les commandes qu’il possède. Un livreur voit les demandes en attente et celles qui lui sont attribuées. Les comptes livreur et entreprise restent en attente tant qu’un administrateur ne les a pas approuvés dans Firestore. Les comptes entreprise ne disposent pas encore de gestion d’équipe ni de rôles administratifs.
 
 ## Technologies
 
@@ -74,7 +74,8 @@ Le projet Firebase utilisé par défaut est `fast-delivery-app-4f971`. La base F
 1. Dans Firebase Console, activez le fournisseur **E-mail/Mot de passe** dans Authentication.
 2. Créez ou sélectionnez la base Firestore nommée `fast-delivery-app`.
 3. Publiez les règles du dépôt (`firestore.rules`) sur **cette base nommée**. Le fichier `firebase.json` associe explicitement ces règles à la base.
-4. Vérifiez dans l’application qu’un compte client ou entreprise peut ouvrir son tableau de bord sans erreur de permission.
+4. Vérifiez dans l’application qu’un compte client peut ouvrir son tableau de bord sans erreur de permission.
+5. Pour approuver un livreur ou une entreprise, ouvrez `users/{uid}` dans la base Firestore `fast-delivery-app` et définissez le champ texte `approvalStatus` à `approved`. L’utilisateur doit ensuite se déconnecter puis se reconnecter. Seul un administrateur du projet doit modifier ce champ.
 
 Vous pouvez aussi publier les règles avec Firebase CLI après connexion :
 
@@ -104,6 +105,7 @@ Ne saisissez pas de vraies adresses ou coordonnées de destinataires lors des es
 - La carte et la progression du parcours ne constituent pas un suivi GPS temps réel du livreur.
 - Les statistiques du livreur comprennent encore des données de démonstration.
 - Les entreprises ne peuvent pas inviter des employés ou gérer plusieurs utilisateurs.
+- L’approbation des livreurs et entreprises se fait manuellement dans Firebase Console; aucun écran administrateur n’est fourni.
 - Les règles Firestore n’ont pas encore été vérifiées avec Firebase Emulator Suite.
 
 ## Structure principale
