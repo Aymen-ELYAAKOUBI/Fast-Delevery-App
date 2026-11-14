@@ -58,7 +58,7 @@ Configuration Android du module : `minSdk 29`, `targetSdk 37`.
 
    `local.properties` est ignoré par Git. Restreignez la clé dans Google Cloud à l’application Android (package et empreinte SHA-1) et aux API nécessaires. Ne mettez pas cette clé dans le dépôt.
 
-3. Vérifiez que le fichier `app/google-services.json` correspond à votre projet Firebase et au package `com.example.suiverliverson`. Si vous utilisez votre propre projet Firebase, remplacez ce fichier par la configuration Android de ce projet.
+3. Téléchargez `google-services.json` depuis les paramètres du projet Firebase, pour l’application Android au package `com.example.suiverliverson`, puis placez-le dans `app/google-services.json`. Ce fichier est ignoré par Git et n’est pas inclus dans le dépôt. Chaque développeur doit fournir sa propre copie.
 
 4. Synchronisez Gradle dans Android Studio, puis lancez la configuration `app`.
 
